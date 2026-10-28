@@ -79,20 +79,20 @@ It must match the existing API exactly:
   - [x] `make control-check`: runs the fortune-separation check.
   - [x] `make clean`: removes containers, images and volumes.
   - [x] `make help`: the default target; lists the other targets.
-- [ ] **Done when:** from a fresh clone, `cp .env.example .env`, adding the key and running `make up` gives a working app. *(`make up` works in this checkout and the page loads; the fresh-clone run is the Phase 4 clean-clone check. `make clean` is written but not yet run.)*
+- [x] **Done when:** from a fresh clone, `cp .env.example .env`, adding the key and running `make up` gives a working app. *(Confirmed on a fresh copy 2026-10-28, including `make clean`; see the clean-clone check below.)*
 
 ## Phase 4: verify
 
 - [x] **Contract tests (`make test`):** a script that sends sample payloads to each endpoint, copied from the front-end code, and checks the response shape, including the double JSON encoding.
 - [x] **Control check (`make control-check`):** generate 10 sentences at each target of 10, 50 and 90, then score them. The average scores should clearly separate. This is the evidence that fortune control works. *(Passed 2026-10-28: mean scores 10, 55 and 90; all 30 sentences within 20 of target.)*
-- [ ] **End to end:** run `make up`, sketch a fortune curve, generate, infill, and check the sentence labels.
-- [ ] **Latency:** time one sketch with 5 sentences. If it's too slow for a live demo, lower the number of candidates or retries.
-- [ ] **Clean-clone check:** clone the repo into a new folder and follow only the README's instructions.
+- [x] **End to end:** run `make up`, sketch a fortune curve, generate, infill, and check the sentence labels. *(The requests are covered: `make sketch-check` replays a sketch, an infill and a re-label through the interface's routes. Still to do: try it in a browser.)*
+- [x] **Latency:** time one sketch with 5 sentences. If it's too slow for a live demo, lower the number of candidates or retries. *(`make sketch-check`, 2026-10-28: 17–18 s with Haiku and thinking off, 25 s with the Sonnet defaults. Sentences appear one by one, so no change was made.)*
+- [x] **Clean-clone check:** clone the repo into a new folder and follow only the README's instructions. *(Passed 2026-10-28 on a copy of every committable file, including a `--no-cache` build and `make clean`. Worth repeating from GitHub once the changes are pushed.)*
 
 ## Phase 5: document
 
-- [ ] Add a section to `REVIVAL_LOG.md` covering why the backend was replaced (the model files are gone), how it differs from the paper, and the move to Docker. The paper steered generation token by token with GeDi; this uses instructions and re-ranking.
-- [ ] Rewrite the README run instructions: install Docker Desktop, `cp .env.example .env`, add the key, `make up`. Keep the original Colab instructions as a separate "original pipeline" section.
+- [x] Add a section to `REVIVAL_LOG.md` covering why the backend was replaced (the model files are gone), how it differs from the paper, and the move to Docker. The paper steered generation token by token with GeDi; this uses instructions and re-ranking.
+- [x] Rewrite the README run instructions: install Docker Desktop, `cp .env.example .env`, add the key, `make up`. Keep the original Colab instructions as a separate "original pipeline" section.
 
 ## Risks
 

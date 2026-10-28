@@ -170,7 +170,10 @@ def generation_prompt(before, after, protagonist, target, surprise):
     lines = [f'Protagonist: {protagonist}', '', 'Story so far:', ' '.join(before) or '(The story has not started yet.)']
     if after:
         lines += ['', 'The sentence you write goes immediately before these sentences, and must lead naturally into them:',
-                  ' '.join(after)]
+                  ' '.join(after),
+                  # Without this, the model treats later events as already known (e.g. "the review had bought her time").
+                  'The events in these later sentences have not happened yet when your sentence takes place, '
+                  'so do not mention or refer back to them.']
     lines += ['', f'Write {NUM_CANDIDATES} different candidates for the next sentence.']
     if target != NO_CONTROL:
         lines.append(f"In the sentence, {protagonist}'s fortune should be about {target}/100: "
@@ -194,8 +197,13 @@ def clean_sentence(text):
     return ' '.join(text.split()).strip().strip('"“”').strip()
 
 
+def protagonist_name(name):
+    '''The interface starts with a blank protagonist name until the writer sets one.'''
+    return (name or '').strip() or 'the protagonist'
+
+
 def score_fortune(pre_context, protagonist, sentence):
-    return get_models().score(SCORE_SYSTEM, score_prompt(pre_context, protagonist, sentence))
+    return get_models().score(SCORE_SYSTEM, score_prompt(pre_context, protagonist_name(protagonist), sentence))
 
 
 def generate_sentence(before, after, characters, target, surprise, rounds):
@@ -204,7 +212,7 @@ def generate_sentence(before, after, characters, target, surprise, rounds):
     Mirrors the original server's loop: keep going until a sentence lands within
     TARGET_TOLERANCE of the target or the regeneration budget runs out.
     '''
-    protagonist = characters[0] if characters else 'the protagonist'
+    protagonist = protagonist_name(characters[0] if characters else '')
     prompt = generation_prompt(before, after, protagonist, target, surprise)
     score_context = ' '.join(before)
     best = None  # (distance, sentence, fortune)

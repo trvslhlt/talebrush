@@ -14,6 +14,8 @@ A record of what it took to get the 2022 TaleBrush project running again on pres
 | 2026-10-28 | — | Revived the interface server and containerized it with Docker (changes 7–10) |
 | 2026-10-28 | — | Added a Claude-backed model server to replace GPT-Neo + GeDi (changes 11–15) |
 | 2026-10-28 | — | One-command startup with Docker Compose and a Makefile; first live tests and latency tuning (changes 16–19) |
+| 2026-10-28 | — | Whole-sketch check through the interface, infilling continuity fix, README rewrite and fresh-copy check (changes 20–23) |
+| 2026-10-28 | — | First browser try: blank protagonist fallback and usage notes in the README (change 24) |
 
 ## The problem: a 2021 software stack on a 2026 runtime
 
@@ -236,6 +238,46 @@ The trade-off is prose quality, which the numbers can't measure; Sonnet's senten
 
 Most of the remaining time is the two model calls each sentence needs one after the other: writing the candidates, then scoring them. Removing the separate scoring call, by having the writer rate its own candidates, would be the next step, at the cost of a less independent score.
 
+### 20. Replay a whole sketch through the interface: `make sketch-check`
+
+**Why:** The earlier checks call the backend directly with one request at a time. In the demo, the audience sees something else: the interface sends a sketch's sentences through its own `/api/*` proxy routes, *one after another*, because each request includes the sentences generated before it. So a 5-sentence sketch takes about five times as long as one sentence. Infilling also alternates, filling one sentence from the front of the gap, then one from the back. None of this had been exercised end to end.
+
+**Fix:** `TaleBrush_Interface/tests/sketch_check.py`, run with `make sketch-check`, replays what `TaleBrush_Generate.jsx` sends. It runs inside the interface container against the interface's own routes, so the proxy is tested too. It continues an opening sentence along a 5-point fortune curve (80, 60, 25, 10, 85), infills 2 sentences into the middle of the story, and re-labels a sentence "edited by hand". It times each step and prints the finished story, so a person can read it for continuity. Like the front end, it sends `regeneration=1`, the default unless the writer raises that slider. With only one round of candidates per sentence, an occasional miss is expected, so the check reports misses and fails only on empty or broken responses.
+
+**Result (2026-10-28, Haiku writing and scoring, thinking off):** A 5-sentence sketch took 16.6–18.4 s, about 3.5 s per sentence, with each sentence appearing as soon as it's ready. A 2-sentence infill took 6.8–10.2 s, and a re-label took under 1 s. With the `.env.example` defaults (Sonnet writing, thinking on), the same sketch took 24.8 s. In the first run, one sentence missed: target 60, scored 40. The second run caught a real bug, which is change 21.
+
+### 21. Infilled sentences must not refer to later events
+
+**Why:** In the first `make sketch-check` run, the first infilled sentence read: "That weekend she cleared out the ledger, counted what remained of her savings, and realized **the review had bought her time** without yet buying her security." The review it mentions appears in a sentence *after* the gap. The prompt told the model to write a sentence that "leads naturally into" the following sentences, but never said those events hadn't happened yet, so the model treated the whole story as already known.
+
+**Fix:** The infilling prompt now adds: "The events in these later sentences have not happened yet when your sentence takes place, so do not mention or refer back to them." On the next run, both infilled sentences set up what follows instead of referring back to it: "Before the inspector arrived, Mara had already burned the first batch of rolls, and the smell of scorched butter drifted out the open door to greet the early customers." All 7 sentences landed within 20 of their targets. This was one run, so it's evidence that the fix works, not proof that the problem can't recur.
+
+### 22. Rewrite the README for the Docker setup
+
+**Why:** The README's instructions still described the upstream path: open `naver-ai`'s Colab notebook (with a broken link), paste an ngrok URL into `app.py` by hand, and run `npm run production`. The models that path needs are gone, and the interface build needs Node 16 or older.
+
+**Fix:** The top of the README now explains that this is a revival and links to this log. "Running TaleBrush" covers Docker Desktop, `cp .env.example .env`, adding the key and `make up`, with a table of the other `make` targets. The original Colab instructions are kept in a separate section, "The original pipeline (no longer runs)". It points to this fork's patched notebook and starts the interface in Docker with `ML_URL`, the same steps as "How to run it now" below. The inherited GeDi README further down is unchanged.
+
+### 23. Check a fresh copy from scratch (no code change)
+
+**Why:** Everything had only been run in the working copy where it was built, which can hide missing files and stale caches.
+
+**What was done:** Every file git would commit (tracked plus untracked, minus ignored) was copied to an empty folder, and the steps were followed exactly as the new README gives them:
+
+- `make up` with no `.env` stopped with "Missing .env. Run: cp .env.example .env, then add your ANTHROPIC_API_KEY."
+- After `cp .env.example .env`, `make up` with the key still blank stopped with "ANTHROPIC_API_KEY is empty in .env."
+- With the key added, `make up` started both services and the page loaded. `make test` passed every check with the default settings, and so did `make sketch-check`.
+- A rebuild with `--no-cache` succeeded in 44 s. `npm ci` and `pip` still install from today's registries, and the webpack build passes on Node 16. The Docker base images were already on the machine, so a first-ever build also downloads those.
+- `make clean` removed that copy's containers, images and volume. Docker Compose names resources after the folder, so the main checkout's volume was untouched.
+
+One external dependency turned up: the page loads its icons from a Font Awesome kit (`kit.fontawesome.com/1a706cfbb1.js`) that belongs to the original authors. It still serves today, but if they cancel it, the icons will disappear.
+
+### 24. A blank protagonist name falls back to "the protagonist"
+
+**Why:** The first browser try stopped with the alert "No context is given to generate story!". That alert is original behavior, not a revival bug. TaleBrush extends a story, so the part of the curve you draw needs a written sentence before or after it, and a curve drawn over every line of an empty story has nothing to continue. Reading that code turned up a related gap: the protagonist's name starts blank, because the original prompt that asked for it is commented out in `TaleBrush.jsx`. A writer who doesn't click the name in the side panel sends `characters: [""]`, and the backend then built prompts like "Protagonist: " with nothing after it.
+
+**Fix:** `server_llm.py` replaces a blank name with "the protagonist", for both generation and scoring. With a blank name, a target of 15 now gives a sentence scored 15, but the model calls the character "The protagonist" literally, so naming them still matters. The interface was left unchanged, to keep the original front end as it was. Instead, the README now has a short "To write a story" section: name the protagonist, write the first sentence, then draw over the lines after it. A second try failed the same way, because of a non-obvious detail in the original chart: each line of text sits *on* a vertical gridline, so the chart's left edge is line 1. A stroke that starts at the left edge covers the opening sentence and leaves nothing before it to continue from. Each stroke is judged on its own, so a failed one doesn't carry over, but every stroke from the left edge fails the same way. The README now says to start the stroke on the first gridline. It also notes that `?task=edit` opens with a ready-made two-sentence story, and that `?task=video` replays the canned sentences from the paper's video instead of calling the model.
+
 ## How to run it now
 
 **With the Claude backend (recommended):**
@@ -250,7 +292,7 @@ Most of the remaining time is the two model calls each sentence needs one after 
    Then set `ANTHROPIC_API_KEY=` in `.env`.
 3. Run `make up`, then open `http://localhost:7082/talebrush`.
 
-`make down` stops it, and `make` lists the other commands.
+`make down` stops it, and `make` lists the other commands. Before a demo, `make sketch-check` replays a full sketch and shows how long the audience will wait.
 
 **With the original GPT-Neo + GeDi pipeline:** this path stops at the notebook's download cells until the model files are recovered (see below).
 
@@ -271,5 +313,6 @@ Most of the remaining time is the two model calls each sentence needs one after 
 
 - **Blocker: the trained model files are no longer available.** The notebook downloads five Google Drive files: the fortune GeDi model, three prompt embeddings (continuation, infilling from the front, infilling from the back) and the fortune recognizer. As of 2026-10-26, all five return "Page Not Found". A known-public Drive file loads fine, so the check itself works. We found no mirror on Hugging Face, and no issues are filed on the upstream repo. Retraining isn't practical, because the repo includes only SST sentiment data, not the fortune-annotated story data the models were trained on. The way forward is to ask the original authors for the files.
 - **Cells after the downloads are untested on current Colab.** These cells load GPT-Neo and GeDi. They may still hit problems with today's PyTorch or NumPy. Separately, `gdown` warns that the `--id` flag is deprecated. That's harmless, but the flag can be dropped.
-- The top-level `README.md` still points to the upstream `naver-ai` notebook, not to this fork's patched one.
+- **Not yet tried in a browser.** Every request the interface makes has been replayed through its routes (change 20), but nobody has yet drawn a curve, clicked generate and watched the sentences and labels appear on the page.
+- **The icons depend on the original authors' Font Awesome kit** (change 23). It works today; if it stops, the page still works, but without icons.
 - `TaleBrush_Backend/server_code.ipynb`, the upstream copy, has not been patched. Only the public notebook has.

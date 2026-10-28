@@ -14,22 +14,64 @@ TaleBrush uses a line sketching interaction for intuitive control and sensemakin
 TaleBrush allows uses to control the protagonist's fortune. 
 
 
-While instructions for running the front- and back-ends are in each subfolders, here we explain the way to run the tool with colab. 
+This fork revives TaleBrush to run on current tooling. The original models are no longer downloadable, so the model server now uses Claude for generation and fortune scoring, and the whole tool runs locally in Docker. [REVIVAL_LOG.md](REVIVAL_LOG.md) explains every change and how this backend differs from the paper's.
 
-1. Run ![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/naver-ai/TaleBrush/blob/main/TaleBrush_Backend/server_code.ipynb]. 
-Note that you should have Colab pro account with high-ram GPUs in the setting. You should also set your own ngrok authtoken in the first cell. 
+## Running TaleBrush
 
-2. Copy the url given from ngrok server and paste it to TaleBrush_Interface/server/app.py. Replace [PLACEHOLDER] with your url. 
+You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running) and a Claude API key from the [Claude Console](https://platform.claude.com).
 
-3. Run the front-end server with 
+1. Create your settings file and add your key to it:
 
-```
-npm run production
-```
+   ```
+   cp .env.example .env
+   ```
 
-That will start the server on port 7082. 
+   Then set `ANTHROPIC_API_KEY=` in `.env`. Git ignores `.env`, so the key stays on your machine.
 
-4. Go to https://localhost:7028/talebrush and use the tool!
+2. Build and start both services (the first build takes a few minutes):
+
+   ```
+   make up
+   ```
+
+3. Open http://localhost:7082/talebrush.
+
+To write a story:
+
+1. Under **Protagonist** in the side panel, click the name and enter one, e.g. Mara.
+2. Write at least the first sentence yourself, on the first line of the text box.
+3. Draw the fortune curve over the lines *after* your sentence: high is good fortune, low is bad. In the chart, each line of text sits on a vertical gridline: the left edge is line 1, the first gridline is line 2, and so on. So start your stroke on the first gridline, not at the left edge. A stroke that covers your only written sentence, or a story with no written sentence, stops with "No context is given to generate story!"
+4. To fill a gap between written sentences, draw over just the empty lines in between. Editing a sentence by hand re-scores it.
+
+For a ready-made opening, open http://localhost:7082/talebrush?task=edit, which starts with two sentences about Jack. Don't use `?task=video`: it replays the canned sentences from the paper's video instead of calling the model.
+
+`make down` stops TaleBrush, and `make help` lists the other targets:
+
+| Target | What it does |
+|---|---|
+| `make logs` | Follow both services' logs; each generated sentence is logged with its target, score and time |
+| `make test` | Check the backend's API contract (a few real model calls) |
+| `make control-check` | Generate 30 sentences at fortune targets of 10, 50 and 90 and check that their scores separate |
+| `make sketch-check` | Replay a 5-sentence sketch, an infill and a re-label through the interface, timing each step |
+| `make clean` | Remove the containers, images and the event-log volume |
+
+The settings in `.env` choose the models and trade quality for speed; `.env.example` explains each one.
+
+## The original pipeline (no longer runs)
+
+The original backend ran GPT-Neo 2.7B with GeDi on a Colab GPU, exposed through ngrok. Its fine-tuned model files were hosted on Google Drive and have since been removed, so this path stops at the model download. The code is kept in [TaleBrush_Backend](TaleBrush_Backend) for reference, and the original instructions were:
+
+1. Run [TaleBrush_Server_Code_(public).ipynb](TaleBrush_Server_Code_(public).ipynb) in Colab with a high-RAM GPU runtime, with your ngrok authtoken stored as the Colab secret `NGROK_AUTHTOKEN`.
+2. Build and start only the interface, pointing it at the ngrok URL printed by the last cell:
+
+   ```
+   cd TaleBrush_Interface
+   docker build -t talebrush-interface .
+   docker run -p 7082:7082 -v talebrush-data:/data -e ML_URL=https://<printed-hostname>/ talebrush-interface
+   ```
+
+3. Open http://localhost:7082/talebrush.
+
 <!-- We use GeDi with the secondary code as the level of the protagonist's fortune (0~100).
 
 * Parse out protagonist for the movie summary dataset.

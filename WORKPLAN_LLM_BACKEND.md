@@ -26,13 +26,13 @@ TaleBrush_Interface/
 
 ## Phase 0: get the interface running in a container (prerequisite)
 
-- [ ] Replace `_app_ctx_stack` with `flask.g` in `server/app.py`.
-- [ ] Update `TaleBrush_Interface/requirements.txt` to current Flask, Flask-Cors and `requests`, and drop the unused pins (`pymongo`, `gunicorn`, old `pylint`/`pytest`).
-- [ ] Change `ML_URL` to read from an environment variable that defaults to `http://localhost:5001/`, instead of editing `[PLACEHOLDER]` by hand.
-- [ ] Make the SQLite database path configurable through an environment variable, so it can live on a Docker volume. Create the database from `config.sql` on first start if it's missing; the `/api/storeEvent` logging route needs it.
-- [ ] Write `TaleBrush_Interface/Dockerfile`. Stage 1 uses `node:16` to run `npm ci && npm run build`; stage 2 uses a slim Python image to copy in `build/` and `server/` and run Flask on port 7082 bound to `0.0.0.0`.
-- [ ] Add a `.dockerignore` that excludes `node_modules` and `build`.
-- [ ] **Done when:** `docker build` succeeds and `/talebrush` loads from the running container. Generation calls are expected to fail until Phase 2.
+- [x] Replace `_app_ctx_stack` with `flask.g` in `server/app.py`.
+- [x] Update `TaleBrush_Interface/requirements.txt` to current Flask, Flask-Cors and `requests`, and drop the unused pins (`pymongo`, `gunicorn`, old `pylint`/`pytest`).
+- [x] Change `ML_URL` to read from an environment variable that defaults to `http://localhost:5001/`, instead of editing `[PLACEHOLDER]` by hand.
+- [x] Make the SQLite database path configurable through an environment variable, so it can live on a Docker volume. Create the database from `config.sql` on first start if it's missing; the `/api/storeEvent` logging route needs it.
+- [x] Write `TaleBrush_Interface/Dockerfile`. Stage 1 uses `node:16` to run `npm ci && npm run build`; stage 2 uses a slim Python image to copy in `build/` and `server/` and run Flask on port 7082 bound to `0.0.0.0`.
+- [x] Add a `.dockerignore` that excludes `node_modules` and `build`.
+- [x] **Done when:** `docker build` succeeds and `/talebrush` loads from the running container. Generation calls are expected to fail until Phase 2. *(Checked over HTTP: the page, JS bundle and CSS return 200, and `/api/storeEvent` writes to SQLite on the volume. Still to do: open the page in a browser.)*
 
 ## Phase 1: decide the model setup
 

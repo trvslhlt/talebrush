@@ -3,37 +3,48 @@
 # GPLv3
 
 '''server/app.py - main api app declaration'''
-from flask import Flask, jsonify, send_from_directory, _app_ctx_stack, request
+from flask import Flask, jsonify, send_from_directory, g, request
 from flask_cors import CORS
 import sqlite3
-import os 
+import os
 import json
 import datetime
 import requests
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE=os.path.join(BASE_DIR, '../database.db')
+DATABASE=os.environ.get('DATABASE_PATH', os.path.join(BASE_DIR, '../database.db'))
+SCHEMA=os.path.join(BASE_DIR, '../config.sql')
 
 '''Main wrapper for app creation'''
 app = Flask(__name__, static_folder='../build')
 CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
-ML_URL = 'http://[PLACEHOLDER]/'
+ML_URL = os.environ.get('ML_URL', 'http://localhost:5001/')
 
 print("Server running!")
 
+def init_db():
+    '''Create the event log table from config.sql if it does not exist yet'''
+    os.makedirs(os.path.dirname(os.path.abspath(DATABASE)), exist_ok=True)
+    conn = sqlite3.connect(DATABASE)
+    exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='DataDump';").fetchone()
+    if not exists:
+        with open(SCHEMA) as f:
+            conn.executescript(f.read())
+    conn.close()
+
+init_db()
+
 def get_db():
-    top = _app_ctx_stack.top
-    print(hasattr(top, 'sqlite_db'), DATABASE)
-    if not hasattr(top, 'sqlite_db'):
-        top.sqlite_db = sqlite3.connect(DATABASE)
-    return top.sqlite_db
+    if 'sqlite_db' not in g:
+        g.sqlite_db = sqlite3.connect(DATABASE)
+    return g.sqlite_db
 
 @app.teardown_appcontext
 def close_connection(exception):
-    top = _app_ctx_stack.top
-    if hasattr(top, 'sqlite_db'):
-        top.sqlite_db.close()
+    db = g.pop('sqlite_db', None)
+    if db is not None:
+        db.close()
 
 ##
 # API routes

@@ -1,6 +1,6 @@
 # TaleBrush Revival Log
 
-A record of what it took to get the 2022 TaleBrush backend running again on present-day Google Colab, and why each change was needed.
+A record of what it took to get the 2022 TaleBrush project running again on present-day tooling, and why each change was needed.
 
 **Original project:** [naver-ai/TaleBrush](https://github.com/naver-ai/TaleBrush) — *TaleBrush: Sketching Stories with Generative Pretrained Language Models* (CHI 2022). TaleBrush lets a writer sketch a line for the protagonist's fortune. A GPT-Neo 2.7B model, steered by a GeDi discriminator, then writes story sentences that follow the line.
 
@@ -11,6 +11,7 @@ A record of what it took to get the 2022 TaleBrush backend running again on pres
 | 2022-07-13 | `e19c3b2` | Original code imported (Kang Min Yoo, NAVER AI) |
 | 2026-10-26 | `6dbe56c` | Added the authors' public Colab notebook, `TaleBrush_Server_Code_(public).ipynb` |
 | 2026-10-26 | `482e0ce` | Patched the notebook to run on current Colab (details below) |
+| 2026-10-28 | — | Revived the interface server and containerized it with Docker (changes 7–10) |
 
 ## The problem: a 2021 software stack on a 2026 runtime
 
@@ -23,7 +24,7 @@ The tunnel setup further down would also have failed, because it relied on an ng
 
 ## Changes
 
-All changes are in `TaleBrush_Server_Code_(public).ipynb`. The model code, the model weights and the front end are unchanged.
+Changes 1–6 are in `TaleBrush_Server_Code_(public).ipynb`. Changes 7–10 are in `TaleBrush_Interface/`, as part of replacing the backend with a modern LLM (see [WORKPLAN_LLM_BACKEND.md](WORKPLAN_LLM_BACKEND.md)). The front-end React code is unchanged.
 
 ### 1. Install `transformers` 4.8.2 without the `tokenizers` package
 
@@ -67,13 +68,52 @@ We kept `transformers` pinned at 4.8.2 rather than upgrading it. The backend's c
 
 The saved error output in cells 0 and 1 was removed, so the notebook opens clean.
 
+### 7. Build the front end with Node 16, inside Docker
+
+**Why:** The front end is built with webpack 4 (2019). On any current Node, the build fails:
+
+```
+Error: error:0308010C:digital envelope routines::unsupported
+```
+
+Node 17 moved to OpenSSL 3, which no longer allows the MD4 hash that webpack 4 uses to name its output files. We confirmed this by running the same build on Node 22. The development machine has Node 26.
+
+**Fix:** `TaleBrush_Interface/Dockerfile` builds the front end in a `node:16` stage, where `npm ci && npm run build` succeeds unchanged. A second stage, on a slim Python image, serves the built files and the API with Flask. The alternatives were the `--openssl-legacy-provider` workaround or upgrading webpack and its plugins. Both mean changing the host setup or the build config; the container pins the toolchain without touching either. `.dockerignore` keeps the local `node_modules` and `build` folders out of the image.
+
+### 8. Update the interface server to current Flask
+
+**Why:** `TaleBrush_Interface/requirements.txt` pinned Flask 0.12.2 (2017), which doesn't run on current Python, and `server/app.py` used `_app_ctx_stack`, which Flask 3 removed. The file also didn't list `requests`, even though `app.py` imports it to forward model calls, and pinned packages the server never used (`pymongo`, `gunicorn`, `pylint`, `pytest`).
+
+**Fix:** `requirements.txt` now lists only Flask 3, Flask-Cors and `requests`. The database connection is stored on `flask.g`, the documented replacement for `_app_ctx_stack`.
+
+### 9. Read the backend URL from an environment variable
+
+**Why:** Connecting the interface to the model server meant hand-editing `ML_URL = 'http://[PLACEHOLDER]/'` in `server/app.py` each time a new ngrok tunnel started.
+
+**Fix:** `ML_URL` comes from an environment variable and defaults to `http://localhost:5001/`. Inside Docker it's set to `http://backend:5001/`, the address of the new backend service.
+
+### 10. Create the event-log database automatically
+
+**Why:** The interface logs each user action to a SQLite database through `/api/storeEvent`. That database had to be created by hand from `config.sql`, and its path was fixed inside the code folder, where a container's files would be lost on rebuild.
+
+**Fix:** The database path comes from the `DATABASE_PATH` environment variable; in Docker it's `/data/database.db`, on a volume that survives rebuilds. On startup, the server creates the table from `config.sql` if it's missing.
+
 ## How to run it now
 
 1. Open the notebook in Colab: `https://colab.research.google.com/github/trvslhlt/talebrush/blob/main/TaleBrush_Server_Code_(public).ipynb`
 2. Pick a GPU runtime with high RAM. GPT-Neo 2.7B and the GeDi model are loaded together.
 3. Add the `NGROK_AUTHTOKEN` secret, then run all cells.
-4. Copy the hostname printed by the last cell into `TaleBrush_Interface/server/app.py`, replacing `[PLACEHOLDER]`.
-5. Start the front end with `npm run production` from `TaleBrush_Interface`.
+4. Build and start the interface, pointing it at the tunnel URL printed by the last cell:
+
+   ```
+   cd TaleBrush_Interface
+   docker build -t talebrush-interface .
+   docker run -p 7082:7082 -v talebrush-data:/data -e ML_URL=https://<printed-hostname>/ talebrush-interface
+   ```
+
+5. Open `http://localhost:7082/talebrush`.
+
+Until the model files are recovered (see below), this path stops at the download cells. The planned LLM backend will replace it with a single `make up`.
 
 ## Known open items
 

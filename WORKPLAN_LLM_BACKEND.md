@@ -65,26 +65,26 @@ It must match the existing API exactly:
 - [x] Write `TaleBrush_Backend/requirements_llm.txt`, separate from the 2021 dependencies.
 - [x] Write `TaleBrush_Backend/Dockerfile`: a slim Python image that installs `requirements_llm.txt` and copies in only `server_llm.py`, not the large 2021 model code and data.
 
-*Phase 2 status (2026-10-28): implemented and tested offline (a fake model for the endpoints, a local stub API for the exact SDK requests). Not yet run against the live API: that needs `ANTHROPIC_API_KEY` and happens in Phase 4.*
+*Phase 2 status (2026-10-28): implemented and tested offline (a fake model for the endpoints, a local stub API for the exact SDK requests). Live contract tests passed the same day (`make test`): sentences took 4–7 s, and targets of 15 and 85 scored 15 and 84.*
 
 ## Phase 3: compose and Makefile
 
-- [ ] Write `docker-compose.yml` with a `backend` service (port 5001, env from `.env`, healthcheck on `/health`) and an `interface` service (port 7082, `ML_URL=http://backend:5001/`, a named volume for the SQLite database, starts after `backend` is healthy).
+- [x] Write `docker-compose.yml` with a `backend` service (port 5001, env from `.env`, healthcheck on `/health`) and an `interface` service (port 7082, `ML_URL=http://backend:5001/`, a named volume for the SQLite database, starts after `backend` is healthy).
 - [x] Write `.env.example` with `ANTHROPIC_API_KEY=`, `GEN_MODEL=` and `SCORE_MODEL=`, and add `.env` to `.gitignore`.
-- [ ] Write the `Makefile`:
-  - [ ] `make up`: fails with a clear message if `.env` is missing, starts the services detached, and prints `http://localhost:7082/talebrush`.
-  - [ ] `make down` and `make logs`.
-  - [ ] `make build`: rebuilds the images.
-  - [ ] `make test`: runs the contract tests against the running backend.
-  - [ ] `make control-check`: runs the fortune-separation check.
-  - [ ] `make clean`: removes containers, images and volumes.
-  - [ ] `make help`: the default target; lists the other targets.
-- [ ] **Done when:** from a fresh clone, `cp .env.example .env`, adding the key and running `make up` gives a working app.
+- [x] Write the `Makefile`:
+  - [x] `make up`: fails with a clear message if `.env` is missing, starts the services detached, and prints `http://localhost:7082/talebrush`.
+  - [x] `make down` and `make logs`.
+  - [x] `make build`: rebuilds the images.
+  - [x] `make test`: runs the contract tests against the running backend.
+  - [x] `make control-check`: runs the fortune-separation check.
+  - [x] `make clean`: removes containers, images and volumes.
+  - [x] `make help`: the default target; lists the other targets.
+- [ ] **Done when:** from a fresh clone, `cp .env.example .env`, adding the key and running `make up` gives a working app. *(`make up` works in this checkout and the page loads; the fresh-clone run is the Phase 4 clean-clone check. `make clean` is written but not yet run.)*
 
 ## Phase 4: verify
 
-- [ ] **Contract tests (`make test`):** a script that sends sample payloads to each endpoint, copied from the front-end code, and checks the response shape, including the double JSON encoding.
-- [ ] **Control check (`make control-check`):** generate 10 sentences at each target of 10, 50 and 90, then score them. The average scores should clearly separate. This is the evidence that fortune control works.
+- [x] **Contract tests (`make test`):** a script that sends sample payloads to each endpoint, copied from the front-end code, and checks the response shape, including the double JSON encoding.
+- [x] **Control check (`make control-check`):** generate 10 sentences at each target of 10, 50 and 90, then score them. The average scores should clearly separate. This is the evidence that fortune control works. *(Passed 2026-10-28: mean scores 10, 55 and 90; all 30 sentences within 20 of target.)*
 - [ ] **End to end:** run `make up`, sketch a fortune curve, generate, infill, and check the sentence labels.
 - [ ] **Latency:** time one sketch with 5 sentences. If it's too slow for a live demo, lower the number of candidates or retries.
 - [ ] **Clean-clone check:** clone the repo into a new folder and follow only the README's instructions.
@@ -96,7 +96,7 @@ It must match the existing API exactly:
 
 ## Risks
 
-- **Scoring drift:** the LLM's sense of "fortune 70" may not match the original model's. The Phase 4 control check shows how big the gap is, and the rubric can be tuned.
+- **Scoring drift:** the LLM's sense of "fortune 70" may not match the original model's. The Phase 4 control check shows how big the gap is, and the rubric can be tuned. *(Control check passed with Haiku scoring, so no rubric changes or model swap were needed. The scores can't be compared with the original model's, whose files are gone.)*
 - **Old npm dependencies:** even on Node 16, some 2019-era packages may fail to install or have problems with `package-lock.json`. The fallback is an even older Node image (e.g. `node:14`), or `npm install` instead of `npm ci`.
 - **Apple Silicon:** some old npm packages with native builds may lack ARM64 binaries. The fallback is `platform: linux/amd64` for the build stage, which is slower but works.
 - **Live demo:** it depends on the network, the API and Docker Desktop running. Run through the demo in advance, start the containers before presenting and keep a recording as backup.

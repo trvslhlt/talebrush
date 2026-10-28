@@ -21,6 +21,8 @@ GEN_MODEL = os.environ.get('GEN_MODEL', 'claude-sonnet-5-5')
 SCORE_MODEL = os.environ.get('SCORE_MODEL', 'claude-haiku-5-5')
 NUM_CANDIDATES = int(os.environ.get('NUM_CANDIDATES', '3'))
 MAX_ROUNDS = int(os.environ.get('MAX_ROUNDS', '3'))
+# 'off' skips the models' reasoning step to cut latency; each call only writes one sentence or one number.
+THINKING = os.environ.get('THINKING', 'on').lower()
 # Same acceptance threshold as the original server: stop once a sentence scores within 20 of the target.
 TARGET_TOLERANCE = 20
 NO_CONTROL = -1
@@ -59,6 +61,19 @@ class ModelRefused(Exception):
     pass
 
 
+def thinking_options(model):
+    '''Request options that turn thinking off for this model, or {} to leave the default (adaptive) on.'''
+    if THINKING != 'off':
+        return {}
+    # Each model family spells "off" differently, and some can't turn it off at all.
+    if model.startswith('claude-sonnet-5-5'):
+        return {'thinking': {'type': 'between_tools'}}
+    if model.startswith('claude-haiku-5-5'):
+        return {'thinking': {'type': 'disabled'}}
+    log.warning('THINKING=off is not supported for %s; leaving thinking on', model)
+    return {}
+
+
 class ClaudeModels:
     '''All model access goes through this class, so another provider can be swapped in.'''
 
@@ -77,6 +92,7 @@ class ClaudeModels:
             # declines, let the API retry on its recommended fallback model.
             betas=['server-side-fallback-2026-07-01'],
             fallbacks='default',
+            **thinking_options(GEN_MODEL),
         )
         return json.loads(_response_text(response))['candidates']
 
@@ -88,6 +104,7 @@ class ClaudeModels:
             system=system,
             messages=[{'role': 'user', 'content': prompt}],
             output_config={'effort': 'low', 'format': {'type': 'json_schema', 'schema': SCORE_SCHEMA}},
+            **thinking_options(SCORE_MODEL),
         )
         return max(0, min(100, int(json.loads(_response_text(response))['fortune'])))
 

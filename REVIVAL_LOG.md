@@ -13,6 +13,7 @@ A record of what it took to get the 2022 TaleBrush project running again on pres
 | 2026-10-26 | `482e0ce` | Patched the notebook to run on current Colab (details below) |
 | 2026-10-28 | — | Revived the interface server and containerized it with Docker (changes 7–10) |
 | 2026-10-28 | — | Added a Claude-backed model server to replace GPT-Neo + GeDi (changes 11–15) |
+| 2026-10-28 | — | One-command startup with Docker Compose and a Makefile; first live tests and latency tuning (changes 16–19) |
 
 ## The problem: a 2021 software stack on a 2026 runtime
 
@@ -142,7 +143,7 @@ The old server, `server_code.py`, and the Colab notebook are untouched, so the o
 - Configuration errors, such as a missing or invalid API key, are not retried. They fail with a clear error in the logs.
 - Each request is logged with the target, the score it reached, the sentence and how long it took.
 
-**Testing so far:** The endpoints were tested offline with a fake model, using payloads copied from the interface's code, and the SDK calls were checked against a local stub API. That covers request parsing, selection, the retry cap, refusals and the response format. Testing against the live API needs an API key and is the next step.
+**Testing so far:** The endpoints were tested offline with a fake model, using payloads copied from the interface's code, and the SDK calls were checked against a local stub API. That covers request parsing, selection, the retry cap, refusals and the response format. The live tests are under change 17.
 
 ### 15. Keep the API key in an ignored `.env` file
 
@@ -150,12 +151,113 @@ The old server, `server_code.py`, and the Colab notebook are untouched, so the o
 
 **Fix:** Settings live in a `.env` file at the repo root, which `.gitignore` already excludes. A committed `.env.example` lists every setting with comments: the API key (left blank), the two model names, and the candidate and round limits. To set up, copy it to `.env` and paste in a key.
 
+### 16. Start everything with `make up`
+
+**Why:** Running TaleBrush meant building two images, starting two containers, wiring the interface to the backend and passing in the API key, all by hand. For a demo, startup needs to be one step that works the same way every time.
+
+**Fix:** `docker-compose.yml` defines both services. The backend reads its settings from `.env` and reports readiness on `/health`. The interface waits until the backend is healthy, finds it at `http://backend:5001/` and keeps its event log on a named volume. Both ports are bound to `localhost` only, because anyone who can reach the backend can spend API credit. The `Makefile` wraps the common commands:
+
+| Command | What it does |
+|---|---|
+| `make up` | Checks that `.env` has a key, builds if needed, starts both services and prints the URL |
+| `make down` / `make logs` | Stops the services / follows their logs |
+| `make build` | Rebuilds the images |
+| `make test` | Runs the contract tests against the live backend |
+| `make control-check` | Checks that fortune targets actually steer generation |
+| `make clean` | Removes the containers, images and event-log volume |
+
+Running `make` alone lists these commands.
+
+### 17. Test the backend against the live API
+
+**Why:** The offline tests used a fake model, so they couldn't show that the real models follow the prompts, or how long a request takes.
+
+**Fix:** `TaleBrush_Backend/tests/contract_test.py`, run with `make test`, sends payloads shaped like the interface's to each endpoint and checks the responses. It uses only the Python standard library and runs inside the backend container. `tests/control_check.py`, run with `make control-check`, generates 10 sentences at each of the fortune targets 10, 50 and 90 and checks that the scores separate. It also reports the average and slowest time per sentence and which models were used, so different `.env` settings can be compared on speed and accuracy in one run.
+
+**Results (2026-10-28):** All contract checks passed on the first live run:
+
+| Request | Target | Scored | Time |
+|---|---|---|---|
+| Rate "A pipe burst overnight and flooded the kitchen." | — | 15 | 2.6 s |
+| Continue the story | 15 | 15 | 6.7 s |
+| Fill in a sentence | 85 | 84 | 4.0 s |
+| Continue, no target | — | 90 | 4.4 s |
+| Continue, through the interface's proxy | 50 | 55 | 4.9 s |
+
+For the target of 15, the model wrote: "Mara slid the first tray of croissants from the oven and found them pale and doughy in the middle, because the old oven she had bought secondhand had quietly died halfway through the night."
+
+**Control check (2026-10-28):** From the same two-sentence opening about Mara's bakery, 10 sentences were generated at each target. Every one of the 30 scored within 20 points of its target:
+
+| Target | Mean score | Range | Within 20 of target | Average time (slowest) |
+|---|---|---|---|---|
+| 10 | 10 | 6–15 | 10/10 | 5.5 s (8.8 s) |
+| 50 | 55 | 40–62 | 10/10 | 3.8 s (4.2 s) |
+| 90 | 90 | 88–92 | 10/10 | 3.8 s (4.1 s) |
+
+Sample sentences from the same opening:
+
+- **Target 10, scored 12:** "Before she could ring up the first customer, the ancient oven let out a metallic groan and died, leaving two hundred unbaked loaves slumped on the trays."
+- **Target 50, scored 60:** "Mara watched the crowd through the fogged front window, thrilled by the numbers but dreading the moment her single oven ran out of loaves before noon."
+- **Target 90, scored 90:** "By noon Mara had sold every croissant on the shelves, and she stood in the doorway with flour on her cheeks, laughing at how easily the morning had gone."
+
+No generation round failed, and no request was declined, even at target 10. The low target was the slowest, probably because a few of its sentences needed a second round to get close enough. Note that the same model family both writes and scores. The check shows that the instruction-based steering and the scorer agree; it isn't an independent measure of fortune. A small human rating of the sentences would be the stronger test.
+
+### 18. Compare Sonnet and Haiku as the writing model
+
+**Why:** In a live demo, every sentence makes the audience wait. A sentence took about 4.4 seconds on average with Claude Sonnet 5.5 writing, and the slowest took 8.8 seconds. The writing model is a one-line setting in `.env`, so it was worth measuring whether the faster Claude Haiku 5.5 could write without losing control.
+
+**Fix:** None needed in the code. `GEN_MODEL` was switched to `claude-haiku-5-5` and `make control-check` was run again, with the same opening and targets as the Sonnet run (Haiku scored in both):
+
+| | Sonnet writing | Haiku writing |
+|---|---|---|
+| Target 10: mean score (within 20 of target) | 10 (10/10) | 10 (10/10) |
+| Target 50: mean score (within 20 of target) | 55 (10/10) | 53 (10/10) |
+| Target 90: mean score (within 20 of target) | 90 (10/10) | 90 (10/10) |
+| Average time per sentence | 4.4 s | 3.5 s |
+| Slowest sentence | 8.8 s | 6.3 s |
+
+Haiku was about 20% faster with the same accuracy, and no round failed in either run. Writing turned out to be only part of the wait; the rest is likely scoring, the models' brief thinking, and network round trips. A sample of Haiku's writing at target 10 (scored 8): "Halfway through the morning, Mara discovered that she had mixed up the salt and the sugar in every batch of dough, and the line outside began to melt away one disgusted customer at a time."
+
+The trade-off is prose quality, which the numbers can't measure; Sonnet's sentences tended to be longer and more detailed. `.env.example` still defaults to Sonnet.
+
+### 19. Add a switch to turn off the models' thinking
+
+**Why:** Current Claude models reason briefly before they answer, even at the lowest effort setting. Each call here writes one sentence or one number, so that step might be pure delay. Turning it off isn't one setting across models: Claude Sonnet 5.5 uses `between_tools`, Claude Haiku 5.5 uses `disabled`, and Claude Opus 5.5 can't turn thinking off at all.
+
+**Fix:** A `THINKING` setting in `.env`, which defaults to `on`, so the original behavior is unchanged. With `THINKING=off`, `server_llm.py` sends the right option for each model, and for a model that can't turn thinking off it logs a warning and leaves thinking on. A stub-API test confirmed the exact option sent for Sonnet, Haiku and Opus. `make control-check` now also prints the thinking setting, so every run records what was tested.
+
+**Result:** With Haiku writing and scoring, turning thinking off made scoring a single sentence faster (2.6 s to 1.6 s), but a full generated sentence improved only slightly, from 3.5 s to 3.3 s on average. The slowest dropped from 6.3 s to 5.2 s. Accuracy held: all 30 sentences were within 20 of target, with means of 10, 47 and 89. Across the three runs:
+
+| | Sonnet, thinking on | Haiku, thinking on | Haiku, thinking off |
+|---|---|---|---|
+| Average time per sentence | 4.4 s | 3.5 s | 3.3 s |
+| Slowest sentence | 8.8 s | 6.3 s | 5.2 s |
+| Sentences within 20 of target | 30/30 | 30/30 | 30/30 |
+
+Most of the remaining time is the two model calls each sentence needs one after the other: writing the candidates, then scoring them. Removing the separate scoring call, by having the writer rate its own candidates, would be the next step, at the cost of a less independent score.
+
 ## How to run it now
+
+**With the Claude backend (recommended):**
+
+1. Install Docker Desktop and start it.
+2. Copy the settings file and add a Claude API key from the Claude Console:
+
+   ```
+   cp .env.example .env
+   ```
+
+   Then set `ANTHROPIC_API_KEY=` in `.env`.
+3. Run `make up`, then open `http://localhost:7082/talebrush`.
+
+`make down` stops it, and `make` lists the other commands.
+
+**With the original GPT-Neo + GeDi pipeline:** this path stops at the notebook's download cells until the model files are recovered (see below).
 
 1. Open the notebook in Colab: `https://colab.research.google.com/github/trvslhlt/talebrush/blob/main/TaleBrush_Server_Code_(public).ipynb`
 2. Pick a GPU runtime with high RAM. GPT-Neo 2.7B and the GeDi model are loaded together.
 3. Add the `NGROK_AUTHTOKEN` secret, then run all cells.
-4. Build and start the interface, pointing it at the tunnel URL printed by the last cell:
+4. Build and start only the interface, pointing it at the tunnel URL printed by the last cell:
 
    ```
    cd TaleBrush_Interface
@@ -164,8 +266,6 @@ The old server, `server_code.py`, and the Colab notebook are untouched, so the o
    ```
 
 5. Open `http://localhost:7082/talebrush`.
-
-Until the model files are recovered (see below), this path stops at the download cells. The planned LLM backend will replace it with a single `make up`.
 
 ## Known open items
 

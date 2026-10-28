@@ -10,6 +10,7 @@ import json
 import os
 import statistics
 import sys
+import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
@@ -30,9 +31,10 @@ def generate(target):
     }
     req = urllib.request.Request(BASE_URL + 'continuingGeneration', data=json.dumps(payload).encode(),
                                  headers={'Content-Type': 'application/json'})
+    start = time.time()
     with urllib.request.urlopen(req, timeout=180) as resp:
         data = json.loads(resp.read())
-    return target, json.loads(data['generated'])[0], json.loads(data['values'])[0]
+    return target, json.loads(data['generated'])[0], json.loads(data['values'])[0], time.time() - start
 
 
 with ThreadPoolExecutor(max_workers=5) as pool:
@@ -40,14 +42,20 @@ with ThreadPoolExecutor(max_workers=5) as pool:
 
 means = {}
 for target in TARGETS:
-    group = [(s, v) for t, s, v in results if t == target]
-    values = [v for _, v in group]
+    group = [(s, v, secs) for t, s, v, secs in results if t == target]
+    values = [v for _, v, _ in group]
+    times = [secs for _, _, secs in group]
     means[target] = statistics.mean(values)
     within = sum(abs(v - target) < 20 for v in values)
     print(f'\nTarget {target}: mean {means[target]:.0f}, range {min(values)}–{max(values)}, '
-          f'{within}/{len(values)} within 20 of target')
-    for sentence, value in group[:3]:
+          f'{within}/{len(values)} within 20 of target, {statistics.mean(times):.1f}s average ({max(times):.1f}s slowest)')
+    for sentence, value, _ in group[:3]:
         print(f'  [{value:3d}] {sentence}')
+
+all_times = [secs for *_, secs in results]
+print(f'\nModels: {os.environ.get("GEN_MODEL")} writing, {os.environ.get("SCORE_MODEL")} scoring, '
+      f'thinking {os.environ.get("THINKING", "on")}. '
+      f'Overall: {statistics.mean(all_times):.1f}s average, {max(all_times):.1f}s slowest per sentence')
 
 separated = means[TARGETS[0]] + 20 < means[TARGETS[1]] < means[TARGETS[2]] - 20
 print('\nPASS: the three targets separate clearly' if separated else

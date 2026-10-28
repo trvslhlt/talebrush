@@ -1,0 +1,4 @@
+# Only the LLM server goes into the image; keep the 2021 model code and data out of the build context.
+*
+!server_llm.py
+!requirements_llm.txt

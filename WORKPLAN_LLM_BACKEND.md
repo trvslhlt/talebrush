@@ -36,10 +36,10 @@ TaleBrush_Interface/
 
 ## Phase 1: decide the model setup
 
-- [ ] Confirm the provider. Recommended: the Claude API, with `ANTHROPIC_API_KEY` set in `.env`.
-- [ ] Confirm the generation model. Recommended: `claude-sonnet-5-5`, configurable through `.env`.
-- [ ] Confirm the scoring model. Recommended: `claude-haiku-5-5`, configurable through `.env`.
-- [ ] Keep the model calls behind a small interface, so a local model (e.g. Ollama) could be added later. A local backend itself is out of scope.
+- [x] Confirm the provider. Recommended: the Claude API, with `ANTHROPIC_API_KEY` set in `.env`. *(Confirmed 2026-10-28.)*
+- [x] Confirm the generation model. Recommended: `claude-sonnet-5-5`, configurable through `.env`.
+- [x] Confirm the scoring model. Recommended: `claude-haiku-5-5`, configurable through `.env`.
+- [x] Keep the model calls behind a small interface, so a local model (e.g. Ollama) could be added later. A local backend itself is out of scope.
 
 ## Phase 2: build the new backend
 
@@ -53,22 +53,24 @@ It must match the existing API exactly:
 | `POST /continuingGeneration` | `pre_context[]`, `controls[0]` (target 0–100), `characters[]`, `temperature[0]`, `regeneration[0]` | `{"generated": "[\"…\"]", "values": "[n]"}` |
 | `POST /infillingGeneration` | the same, plus `post_context[]` and `is_front` | the same |
 
-- [ ] Write `score_fortune(pre_context, character, sentence)`. It asks the model for an integer rating with a structured output and clamps it to 0–100. A short rubric in the prompt anchors the scale (0 = disaster, 50 = neutral, 100 = triumph).
-- [ ] Write `generate_sentence(before, after, characters, target, temperature)`. It returns exactly one sentence, and the prompt describes the target fortune in words as well as numbers (e.g. "about 20/100: things go badly for Anna"). With `after` empty it continues the story; otherwise it writes the sentence that bridges `before` and `after`. If the target is `-1` (no control), it leaves out the fortune instruction.
-- [ ] Add re-ranking with the original logic. Generate, score, and stop when the score is within 20 of the target or the retry limit `regeneration[0]` is reached, then return the closest attempt.
-- [ ] Cut latency by asking for about 3 candidates in one call and scoring them in parallel, rather than looping one at a time.
-- [ ] Make it robust: strip quotes and leftover text so the output is a single sentence, return an empty string after repeated failures (the front end already handles that), and log each request with how long it took.
-- [ ] Implement `/labelSentence`.
-- [ ] Implement `/continuingGeneration`.
-- [ ] Implement `/infillingGeneration`.
-- [ ] Add a `GET /health` endpoint for the compose healthcheck.
-- [ ] Write `TaleBrush_Backend/requirements_llm.txt`, separate from the 2021 dependencies.
-- [ ] Write `TaleBrush_Backend/Dockerfile`: a slim Python image that installs `requirements_llm.txt` and copies in only `server_llm.py`, not the large 2021 model code and data.
+- [x] Write `score_fortune(pre_context, character, sentence)`. It asks the model for an integer rating with a structured output and clamps it to 0–100. A short rubric in the prompt anchors the scale (0 = disaster, 50 = neutral, 100 = triumph).
+- [x] Write `generate_sentence(before, after, characters, target, temperature)`. It returns exactly one sentence, and the prompt describes the target fortune in words as well as numbers (e.g. "about 20/100: things go badly for Anna"). With `after` empty it continues the story; otherwise it writes the sentence that bridges `before` and `after`. If the target is `-1` (no control), it leaves out the fortune instruction.
+- [x] Add re-ranking with the original logic. Generate, score, and stop when the score is within 20 of the target or the retry limit `regeneration[0]` is reached, then return the closest attempt.
+- [x] Cut latency by asking for about 3 candidates in one call and scoring them in parallel, rather than looping one at a time.
+- [x] Make it robust: strip quotes and leftover text so the output is a single sentence, return an empty string after repeated failures (the front end already handles that), and log each request with how long it took.
+- [x] Implement `/labelSentence`.
+- [x] Implement `/continuingGeneration`.
+- [x] Implement `/infillingGeneration`.
+- [x] Add a `GET /health` endpoint for the compose healthcheck.
+- [x] Write `TaleBrush_Backend/requirements_llm.txt`, separate from the 2021 dependencies.
+- [x] Write `TaleBrush_Backend/Dockerfile`: a slim Python image that installs `requirements_llm.txt` and copies in only `server_llm.py`, not the large 2021 model code and data.
+
+*Phase 2 status (2026-10-28): implemented and tested offline (a fake model for the endpoints, a local stub API for the exact SDK requests). Not yet run against the live API: that needs `ANTHROPIC_API_KEY` and happens in Phase 4.*
 
 ## Phase 3: compose and Makefile
 
 - [ ] Write `docker-compose.yml` with a `backend` service (port 5001, env from `.env`, healthcheck on `/health`) and an `interface` service (port 7082, `ML_URL=http://backend:5001/`, a named volume for the SQLite database, starts after `backend` is healthy).
-- [ ] Write `.env.example` with `ANTHROPIC_API_KEY=`, `GEN_MODEL=` and `SCORE_MODEL=`, and add `.env` to `.gitignore`.
+- [x] Write `.env.example` with `ANTHROPIC_API_KEY=`, `GEN_MODEL=` and `SCORE_MODEL=`, and add `.env` to `.gitignore`.
 - [ ] Write the `Makefile`:
   - [ ] `make up`: fails with a clear message if `.env` is missing, starts the services detached, and prints `http://localhost:7082/talebrush`.
   - [ ] `make down` and `make logs`.

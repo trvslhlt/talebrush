@@ -1,0 +1,28 @@
+services:
+  backend:
+    build: ./TaleBrush_Backend
+    env_file: .env
+    # Bound to localhost only: anyone who can reach this port can spend API credit.
+    ports:
+      - "127.0.0.1:5001:5001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  interface:
+    build: ./TaleBrush_Interface
+    environment:
+      ML_URL: http://backend:5001/
+      DATABASE_PATH: /data/database.db
+    ports:
+      - "127.0.0.1:7082:7082"
+    volumes:
+      - talebrush-data:/data
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  talebrush-data:

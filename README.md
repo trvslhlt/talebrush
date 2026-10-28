@@ -38,10 +38,12 @@ You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) (runn
 
 To write a story:
 
-1. Under **Protagonist** in the side panel, click the name and enter one, e.g. Mara.
-2. Write at least the first sentence yourself, on the first line of the text box.
-3. Draw the fortune curve over the lines *after* your sentence: high is good fortune, low is bad. In the chart, each line of text sits on a vertical gridline: the left edge is line 1, the first gridline is line 2, and so on. So start your stroke on the first gridline, not at the left edge. A stroke that covers your only written sentence, or a story with no written sentence, stops with "No context is given to generate story!"
+1. Optionally, type the protagonist's name above the chart, e.g. Mara. Leave it blank and the story is about *you*, told in the second person.
+2. Optionally, write the first sentence yourself on the first line of the text box. If you leave the story empty, Claude writes the opening.
+3. Draw the fortune curve: high is good fortune, low is bad. In the chart, each line of text sits on a vertical gridline: the left edge is line 1, the first gridline is line 2, and so on. If your stroke starts over sentences you've written, they're kept and the story continues after them.
 4. To fill a gap between written sentences, draw over just the empty lines in between. Editing a sentence by hand re-scores it.
+
+The small numbered circles around the page explain each feature with an example, and say what's new since the 2022 original. Click one to open it. Add `?markers=off` to the URL to hide them.
 
 For a ready-made opening, open http://localhost:7082/talebrush?task=edit, which starts with two sentences about Jack. Don't use `?task=video`: it replays the canned sentences from the paper's video instead of calling the model.
 
@@ -52,6 +54,7 @@ For a ready-made opening, open http://localhost:7082/talebrush?task=edit, which 
 | `make logs` | Follow both services' logs; each generated sentence is logged with its target, score and time |
 | `make test` | Check the backend's API contract (a few real model calls) |
 | `make control-check` | Generate 30 sentences at fortune targets of 10, 50 and 90 and check that their scores separate |
+| `make surprise-check` | Generate sentences at low, medium and high surprise and check that they get more surprising |
 | `make sketch-check` | Replay a 5-sentence sketch, an infill and a re-label through the interface, timing each step |
 | `make clean` | Remove the containers, images and the event-log volume |
 

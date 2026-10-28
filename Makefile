@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up down logs build test control-check sketch-check clean check-env
+.PHONY: help up down logs build test control-check surprise-check sketch-check clean check-env
 
 COMPOSE := docker compose
 URL := http://localhost:7082/talebrush
@@ -29,6 +29,9 @@ test: check-env ## Check the backend's API contract (a few real model calls)
 
 control-check: check-env ## Check that fortune targets steer generation (about 30 requests)
 	$(COMPOSE) exec -T backend python - < TaleBrush_Backend/tests/control_check.py
+
+surprise-check: check-env ## Check that the drawn surprise level changes the sentences (about 18 requests)
+	$(COMPOSE) exec -T backend python - < TaleBrush_Backend/tests/surprise_check.py
 
 sketch-check: check-env ## Replay a 5-sentence sketch through the interface, timing each step
 	$(COMPOSE) exec -T interface python - < TaleBrush_Interface/tests/sketch_check.py

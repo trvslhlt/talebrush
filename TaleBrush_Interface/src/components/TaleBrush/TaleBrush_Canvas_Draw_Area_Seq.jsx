@@ -17,10 +17,7 @@ export default class TaleBrush_Canvas_Draw_Area_Seq extends React.Component {
     if(this.props.mother_state.being_generated){
       return
     }
-    if(this.props.mother_state.characters[0]['name']==''){
-      alert("Please first specify the protagonist's name.")
-      return
-    }
+    // Enhancement E7: a blank name no longer blocks drawing; the story is then about "you".
       var _this = this
       console.log(this.props.val['_id'])
       // console.log(e.pageX-document.getElementById('drawer_'+this.props.val['_id']).offsetLeft)

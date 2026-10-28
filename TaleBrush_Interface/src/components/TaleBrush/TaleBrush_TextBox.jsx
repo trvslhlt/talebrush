@@ -3,6 +3,7 @@
 // GPLv3
 
 import React from 'react';
+import DemoMarker from './TaleBrush_DemoMarker';
 import M from 'materialize-css'
 import TaleBrush_TextBox_Text from './TaleBrush_TextBox_Text';
 import TaleBrush_TextBox_Param from './TaleBrush_TextBox_Param';
@@ -84,6 +85,10 @@ setSurpriseAsDuration(e){
                             <input type='checkbox' id='surprise_check_panel' value={this.props.mother_state.surprise_in_panel} onChange={this.setSurpriseAsPanel.bind(this)}></input>
                             <span style={{paddingLeft: '25px'}}>Surprise in separate panel.</span>
                         </label>
+                        <DemoMarker n={7} title='Control surprise' style={{marginLeft: '8px', marginTop: '-3px'}}
+                            points={[<span>Tick to open the surprise panel</span>, <span>Bottom = expected, top = twist</span>, <span>Fortune comes first; surprise picks between close options</span>]}
+                            example={<span>Low: sells out of sourdough by noon. High: the flour has been swapped for cement</span>}
+                            note={<span>Rebuilt: five levels plus surprise scoring, since temperature is gone from the API</span>} />
                     </div>
             </div>
             

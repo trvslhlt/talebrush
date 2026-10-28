@@ -85,7 +85,7 @@ It must match the existing API exactly:
 
 - [x] **Contract tests (`make test`):** a script that sends sample payloads to each endpoint, copied from the front-end code, and checks the response shape, including the double JSON encoding.
 - [x] **Control check (`make control-check`):** generate 10 sentences at each target of 10, 50 and 90, then score them. The average scores should clearly separate. This is the evidence that fortune control works. *(Passed 2026-10-28: mean scores 10, 55 and 90; all 30 sentences within 20 of target.)*
-- [x] **End to end:** run `make up`, sketch a fortune curve, generate, infill, and check the sentence labels. *(The requests are covered: `make sketch-check` replays a sketch, an infill and a re-label through the interface's routes. Still to do: try it in a browser.)*
+- [x] **End to end:** run `make up`, sketch a fortune curve, generate, infill, and check the sentence labels. *(Confirmed in the browser 2026-10-28, commit `35652a3`. `make sketch-check` replays the same requests without a browser.)*
 - [x] **Latency:** time one sketch with 5 sentences. If it's too slow for a live demo, lower the number of candidates or retries. *(`make sketch-check`, 2026-10-28: 17–18 s with Haiku and thinking off, 25 s with the Sonnet defaults. Sentences appear one by one, so no change was made.)*
 - [x] **Clean-clone check:** clone the repo into a new folder and follow only the README's instructions. *(Passed 2026-10-28 on a copy of every committable file, including a `--no-cache` build and `make clean`. Worth repeating from GitHub once the changes are pushed.)*
 

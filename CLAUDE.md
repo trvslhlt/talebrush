@@ -6,7 +6,8 @@ This is a fork of [naver-ai/TaleBrush](https://github.com/naver-ai/TaleBrush) (C
 
 Every change to this repo must be recorded in [REVIVAL_LOG.md](REVIVAL_LOG.md), in the same session as the change. The log is the source material for the presentation, so it should explain the work to an audience, not just list diffs.
 
-- Add each change under **Changes** as a numbered `###` heading, with a **Why:** paragraph (what was broken or missing, and the root cause) and a **Fix:** paragraph (what changed, and why that approach was chosen over the alternatives).
+- Restoration of the original tool is complete as of commit `35652a3`. Add new work under **Enhancements** as `### E1.`, `### E2.`, …; use **Changes** (numbered 1, 2, …) only for fixes that restore original behavior.
+- Give each entry a `###` heading, with a **Why:** paragraph (what was broken or missing, and the root cause) and a **Fix:** paragraph (what changed, and why that approach was chosen over the alternatives).
 - Include the exact error message when a change fixes a failure.
 - Add a row to the **Timeline** table for each set of changes. The user makes the commits, so leave the commit column as `—` for them to fill in.
 - Keep **How to run it now** and **Known open items** accurate. Update or remove entries that a change makes outdated.

@@ -3,6 +3,7 @@
 // GPLv3
 
 import React from 'react';
+import DemoMarker from './TaleBrush_DemoMarker';
 import Nouislider from "nouislider-react";
 import "nouislider/distribute/nouislider.css";
 import axios from 'axios';
@@ -1094,10 +1095,7 @@ export default class TaleBrush_TextBox_Text extends React.Component {
     console.log('test')
   }
   checkCharacterName(){
-    if(this.props.mother_state.characters[0]['name']==''){
-      alert('Please first set the name of protagonist.')
-      document.getElementById('textarea').blur()
-    }
+    // Enhancement E7: a blank name no longer blocks writing; the story is then about "you".
   }
 
   renderSentenceIndicator() {
@@ -1224,12 +1222,32 @@ export default class TaleBrush_TextBox_Text extends React.Component {
                   {this.renderGenerated()}
                 </ul>
               </div>
+              <DemoMarker n={8} title='History' style={{position: 'absolute', top: '12px', left: 'calc(84% + 126px)'}}
+                  points={[<span>Every stroke saves a new version</span>, <span>Hover to preview, click to switch</span>, <span>Pencil renames, × deletes</span>]}
+                  example={<span>Go back to the version before the comeback</span>} />
               
             </div>
 
             <div style={{position:'relative', marginTop:'20px'}}>
+              <DemoMarker n={2} title="Write an opening, or don't" style={{position: 'absolute', top: '7px', left: '-52px'}}
+                  points={[<span>One sentence per <b>&gt;</b> line</span>, <span>Each line is one gridline on the chart</span>]}
+                  example={<span><i>Today Sophie starts law school.</i></span>}
+                  note={<span>Empty stories now work: Claude writes the opening</span>} />
+              <DemoMarker n={6} title='Edit and fill gaps' style={{position: 'absolute', top: '103px', left: '-52px'}}
+                  points={[<span>Edit a sentence: it gets re-scored</span>, <span>Draw over empty lines between sentences to fill them</span>]}
+                  example={<span>Keep lines 1 and 5, draw over 2 to 4</span>}
+                  note={<span>Filled sentences no longer mention events that haven't happened yet</span>} />
               <div id='textarea_prompt' className='commonText' style={{height: 'fit-content', border: 'none', color:'transparent', overflowY:'auto', fontFamily: 'Noto Sans', fontSize: '16px', fontWeight: '400', lineHeight: '180%', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak:'break-word', lineHeight:'200%'}}></div>
-              
+              {/* Enhancement E4: a placeholder on the first line while the story is empty. The text always holds
+                  the '>' line markers, so the textarea's own placeholder would never show. */}
+              {this.props.mother_state.text.replace(/[>\s]/g, '')=='' &&
+                <div className='commonText' style={{height: 'fit-content', pointerEvents: 'none', fontFamily: 'Noto Sans', fontSize: '16px', fontWeight: '400', lineHeight: '200%', whiteSpace: 'pre-wrap'}}>
+                  <span style={{visibility: 'hidden'}}>&gt;</span>
+                  <span style={{color: '#aaaaaa'}}>
+                    {this.props.mother_state.characters[0]['name']!='' ? 'Start '+this.props.mother_state.characters[0]['name']+"'s story" : 'Start your story'}
+                  </span>
+                </div>}
+
               <TextareaAutosize id='textarea' className='commonText' value={this.props.mother_state.text} 
               style={{border: 'none', resize: 'none', overflow:'hidden', fontFamily: 'Noto Sans', fontSize: '16px', fontWeight: '400', lineHeight: '200%', touchAction:'auto'}} onFocus={this.checkCharacterName.bind(this)} onPointerUp={this.processDecideHighlightedSentence.bind(this, undefined, true)} onBlur={this.onBlurProcess.bind(this)} 
               onChange={this.storeAndParseSentences.bind(this)} onScroll={this.adjustScrollHeight.bind(this)} onKeyUp={this.keydownprocessDecideHighlightedSentence.bind(this)} disabled={this.props.mother_state.being_generated}></TextareaAutosize>

@@ -383,6 +383,53 @@ export default class TaleBrush extends React.Component {
           if(min==Infinity || max==Infinity){
             return
           }
+          // Enhancements E1 and E2 (see REVIVAL_LOG.md): two strokes that used to end in
+          // "No context is given to generate story!" now generate.
+          var is_written = function(i){
+            return text_parsed[i.toString()]!=undefined && text_parsed[i.toString()]['sentence']!=''
+          }
+          var written_outside = false
+          for(var i=0; i<_this.props.mother_state.total_length; i++){
+            if((i<min || i>max) && is_written(i)){
+              written_outside = true
+            }
+          }
+          if(!written_outside && _this.props.val!=undefined && _this.props.val['_id']!='_surprise'){
+            var first_unwritten = min
+            while(first_unwritten<=max && is_written(first_unwritten)){
+              first_unwritten++
+            }
+            var written_inside = false
+            for(var i=min; i<=max; i++){
+              if(is_written(i)){
+                written_inside = true
+              }
+            }
+            if(!written_inside){
+              // E2: the story is empty, so the model writes it from the first line.
+              continuing_generation(_this, 0, -1, max)
+              return
+            }else if(first_unwritten>min && first_unwritten<=max){
+              // E1: the stroke starts on written sentences. Keep them as context and
+              // generate only the lines after them, as if the stroke had started there.
+              var cur_controls = _this.props.mother_state.controls[_this.props.mother_state.cur_path_id]
+              var original_controls = _this.props.mother_state.original_controls
+              for(var i=min; i<first_unwritten; i++){
+                if(original_controls[i]==undefined || original_controls[i][0]==undefined){
+                  delete cur_controls[_this.props.val['_id']][i]
+                  delete cur_controls['_regeneration'][i]
+                }else{
+                  cur_controls[_this.props.val['_id']][i] = original_controls[i][0]
+                  cur_controls['_regeneration'][i] = original_controls[i][1]
+                }
+                delete original_controls[i]
+              }
+              _this.props.mother_state.added_control_ids = _this.props.mother_state.added_control_ids.filter(function(i){
+                return i>=first_unwritten
+              })
+              min = first_unwritten
+            }
+          }
           for(var i=min-1; i>=0; i--){
             if(text_parsed[i.toString()]==undefined){
               pre_gap_count++

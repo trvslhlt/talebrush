@@ -7,6 +7,7 @@ model calls, so it needs a valid API key and costs a little.
 Run with: make test
 '''
 import json
+import re
 import os
 import sys
 import time
@@ -62,6 +63,16 @@ check_generation('infillingGeneration', data, elapsed)
 
 data, elapsed = post('continuingGeneration', dict(generation, controls=json.dumps(['-1'])))
 check_generation('continuingGeneration without a fortune target', data, elapsed)
+
+# Enhancement E2: the interface now asks for an opening sentence when the story is empty.
+data, elapsed = post('continuingGeneration', dict(generation, pre_context=json.dumps([]), controls=json.dumps(['70'])))
+check_generation('continuingGeneration of an empty story', data, elapsed)
+
+# Enhancement E7: a blank protagonist name makes "you" the protagonist.
+data, elapsed = post('continuingGeneration', dict(generation, pre_context=json.dumps([]), characters=json.dumps([''])))
+check_generation('continuingGeneration with a blank protagonist', data, elapsed)
+sentence = json.loads(data['generated'])[0]
+check('blank protagonist: the story is about "you"', re.search(r"\byou(r|rs|rself)?\b", sentence, re.I), repr(sentence))
 
 print(f'\n{len(failures)} failed' if failures else '\nAll checks passed')
 sys.exit(1 if failures else 0)

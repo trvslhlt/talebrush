@@ -26,6 +26,14 @@ THINKING = os.environ.get('THINKING', 'on').lower()
 # Same acceptance threshold as the original server: stop once a sentence scores within 20 of the target.
 TARGET_TOLERANCE = 20
 NO_CONTROL = -1
+# The protagonist when the writer leaves the name blank.
+SECOND_PERSON = 'you'
+# The interface sends a surprise of 0.7 for every line the writer hasn't drawn surprise on, so 0.7 means "not set".
+UNSET_SURPRISE = 0.7
+# When a surprise level is drawn, a candidate also has to land within this many points of it (0-100 scale),
+# and surprise counts half as much as fortune when picking the closest candidate.
+SURPRISE_TOLERANCE = 25
+SURPRISE_WEIGHT = 0.5
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 log = logging.getLogger('talebrush')
@@ -49,6 +57,13 @@ SCORE_SCHEMA = {
     'type': 'object',
     'properties': {'fortune': {'type': 'integer'}},
     'required': ['fortune'],
+    'additionalProperties': False,
+}
+
+SCORE_WITH_SURPRISE_SCHEMA = {
+    'type': 'object',
+    'properties': {'fortune': {'type': 'integer'}, 'surprise': {'type': 'integer'}},
+    'required': ['fortune', 'surprise'],
     'additionalProperties': False,
 }
 
@@ -96,17 +111,18 @@ class ClaudeModels:
         )
         return json.loads(_response_text(response))['candidates']
 
-    def score(self, system, prompt):
-        '''Return the protagonist's fortune as an integer from 0 to 100.'''
+    def score(self, system, prompt, schema=SCORE_SCHEMA):
+        '''Return a dict of ratings from 0 to 100: 'fortune', plus 'surprise' if the schema asks for it.'''
         response = self.client.messages.create(
             model=SCORE_MODEL,
             max_tokens=2048,
             system=system,
             messages=[{'role': 'user', 'content': prompt}],
-            output_config={'effort': 'low', 'format': {'type': 'json_schema', 'schema': SCORE_SCHEMA}},
+            output_config={'effort': 'low', 'format': {'type': 'json_schema', 'schema': schema}},
             **thinking_options(SCORE_MODEL),
         )
-        return max(0, min(100, int(json.loads(_response_text(response))['fortune'])))
+        ratings = json.loads(_response_text(response))
+        return {key: max(0, min(100, int(value))) for key, value in ratings.items()}
 
 
 def _response_text(response):
@@ -157,26 +173,67 @@ def describe_fortune(target):
     return 'things go wonderfully'
 
 
+SURPRISE_RUBRIC = (
+    'Also rate how surprising the sentence is to a reader of the earlier story, from 0 to 100. '
+    '0 = exactly what a reader would expect to happen next. 25 = a natural next step with a small fresh detail. '
+    '50 = a noticeable but believable turn. 75 = an unexpected development that changes the direction of the story. '
+    '100 = a shocking twist nobody would see coming.'
+)
+
+
+def has_surprise(surprise):
+    return surprise != UNSET_SURPRISE
+
+
 def describe_surprise(surprise):
-    '''The interface's "surprise" control used to set sampling temperature, which the API no longer accepts.'''
+    '''The interface's surprise control used to set sampling temperature, which the API no longer accepts.
+
+    Five levels across the whole 0-1 range, so every part of the surprise panel changes the instruction.
+    '''
+    if not has_surprise(surprise):
+        return ''
+    if surprise < 0.2:
+        return 'Surprise: none. Write exactly what a reader would expect to happen next, told plainly.'
     if surprise < 0.4:
-        return 'Keep the sentence predictable and conventional for the story.'
-    if surprise > 0.8:
-        return 'Make the sentence surprising: take the story somewhere unexpected.'
-    return ''
+        return 'Surprise: low. Keep the sentence conventional, with at most a small fresh detail.'
+    if surprise < 0.6:
+        return 'Surprise: medium. Give the story a noticeable but believable turn.'
+    if surprise < 0.8:
+        return 'Surprise: high. Take the story in an unexpected direction.'
+    return 'Surprise: very high. Write a shocking twist that nobody would see coming, while staying consistent with the story.'
+
+
+def is_second_person(protagonist):
+    return protagonist.lower() == SECOND_PERSON
+
+
+def describe_protagonist(protagonist):
+    if is_second_person(protagonist):
+        return 'Protagonist: "you", the reader. The story is told in the second person.'
+    return f'Protagonist: {protagonist}'
 
 
 def generation_prompt(before, after, protagonist, target, surprise):
-    lines = [f'Protagonist: {protagonist}', '', 'Story so far:', ' '.join(before) or '(The story has not started yet.)']
+    lines = [describe_protagonist(protagonist), '', 'Story so far:', ' '.join(before) or '(The story has not started yet.)']
     if after:
         lines += ['', 'The sentence you write goes immediately before these sentences, and must lead naturally into them:',
                   ' '.join(after),
                   # Without this, the model treats later events as already known (e.g. "the review had bought her time").
                   'The events in these later sentences have not happened yet when your sentence takes place, '
                   'so do not mention or refer back to them.']
-    lines += ['', f'Write {NUM_CANDIDATES} different candidates for the next sentence.']
+    second_person = is_second_person(protagonist)
+    if before:
+        next_sentence = 'next sentence'
+    elif second_person:
+        next_sentence = "story's opening sentence"
+    else:
+        next_sentence = "story's opening sentence, introducing " + protagonist
+    lines += ['', f'Write {NUM_CANDIDATES} different candidates for the {next_sentence}.']
+    if second_person:
+        lines.append('Write in the second person, addressing the protagonist as "you" (e.g. "You open the door.").')
     if target != NO_CONTROL:
-        lines.append(f"In the sentence, {protagonist}'s fortune should be about {target}/100: "
+        possessive = 'your' if second_person else f"{protagonist}'s"
+        lines.append(f'In the sentence, {possessive} fortune should be about {target}/100: '
                      f'{describe_fortune(target)} for {protagonist}.')
     surprise_hint = describe_surprise(surprise)
     if surprise_hint:
@@ -185,7 +242,7 @@ def generation_prompt(before, after, protagonist, target, surprise):
 
 
 def score_prompt(pre_context, protagonist, sentence):
-    return '\n'.join([f'Protagonist: {protagonist}', '', 'Earlier story:', pre_context.strip() or '(none)',
+    return '\n'.join([describe_protagonist(protagonist), '', 'Earlier story:', pre_context.strip() or '(none)',
                       '', 'Sentence to rate:', sentence])
 
 
@@ -198,12 +255,18 @@ def clean_sentence(text):
 
 
 def protagonist_name(name):
-    '''The interface starts with a blank protagonist name until the writer sets one.'''
-    return (name or '').strip() or 'the protagonist'
+    '''A blank protagonist name makes "you" the protagonist, in a second-person story.'''
+    return (name or '').strip() or SECOND_PERSON
 
 
 def score_fortune(pre_context, protagonist, sentence):
-    return get_models().score(SCORE_SYSTEM, score_prompt(pre_context, protagonist_name(protagonist), sentence))
+    return get_models().score(SCORE_SYSTEM, score_prompt(pre_context, protagonist_name(protagonist), sentence))['fortune']
+
+
+def score_fortune_and_surprise(pre_context, protagonist, sentence):
+    return get_models().score(SCORE_SYSTEM + ' ' + SURPRISE_RUBRIC,
+                              score_prompt(pre_context, protagonist_name(protagonist), sentence),
+                              SCORE_WITH_SURPRISE_SCHEMA)
 
 
 def generate_sentence(before, after, characters, target, surprise, rounds):
@@ -215,24 +278,33 @@ def generate_sentence(before, after, characters, target, surprise, rounds):
     protagonist = protagonist_name(characters[0] if characters else '')
     prompt = generation_prompt(before, after, protagonist, target, surprise)
     score_context = ' '.join(before)
-    best = None  # (distance, sentence, fortune)
+    # Surprise is only rated when the writer drew a surprise level, so plain generation costs no more than before.
+    surprise_target = round(surprise * 100) if has_surprise(surprise) else None
+    rate = score_fortune_and_surprise if surprise_target is not None else \
+        lambda *args: {'fortune': score_fortune(*args)}
+    best = None  # (distance, sentence, ratings, close_enough)
     for _ in range(max(1, min(rounds, MAX_ROUNDS))):
         try:
             candidates = [c for c in map(clean_sentence, get_models().generate(GENERATION_SYSTEM, prompt)) if c]
-            fortunes = list(pool.map(lambda s: score_fortune(score_context, protagonist, s), candidates))
+            all_ratings = list(pool.map(lambda s: rate(score_context, protagonist, s), candidates))
         except (ModelRefused, *TRANSIENT_ERRORS) as e:
             log.warning('generation round failed: %r', e)
             continue
-        for sentence, fortune in zip(candidates, fortunes):
-            distance = 0 if target == NO_CONTROL else abs(fortune - target)
+        for sentence, ratings in zip(candidates, all_ratings):
+            fortune_distance = 0 if target == NO_CONTROL else abs(ratings['fortune'] - target)
+            surprise_distance = 0 if surprise_target is None else abs(ratings['surprise'] - surprise_target)
+            distance = fortune_distance + SURPRISE_WEIGHT * surprise_distance
+            close_enough = fortune_distance < TARGET_TOLERANCE and surprise_distance < SURPRISE_TOLERANCE
             if best is None or distance < best[0]:
-                best = (distance, sentence, fortune)
-        if best is not None and best[0] < TARGET_TOLERANCE:
+                best = (distance, sentence, ratings, close_enough)
+        if best is not None and best[3]:
             break
     if best is None:
         # The interface treats an empty sentence as "nothing generated".
         return '', 50
-    return best[1], best[2]
+    if surprise_target is not None:
+        log.info('surprise target=%d rated=%d', surprise_target, best[2]['surprise'])
+    return best[1], best[2]['fortune']
 
 
 ##

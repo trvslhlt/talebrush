@@ -3,6 +3,7 @@
 // GPLv3
 
 import React from 'react';
+import DemoMarker from './TaleBrush_DemoMarker';
 import TaleBrush_Canvas_Draw_Area_Seq from './TaleBrush_Canvas_Draw_Area_Seq';
 import TaleBrush_Canvas_SenVis_Seq from './TaleBrush_Canvas_SenVis_Seq';
 import TaleBrush_Canvas_SenVis_Att from './TaleBrush_Canvas_SenVis_Att'
@@ -921,7 +922,7 @@ export default class TaleBrush_Canvas extends React.Component {
                         border: '1.2px solid', borderRadius:'8px', padding:'4px 10px 4px 10px'}}>
                     
                     <input type='text' id='protagonist_input' 
-                    placeholder='Protagonist' spellCheck='false'
+                    placeholder='Your' spellCheck='false'
                     style={{
                         display:'inline-block', minWidth:'50px', 
                         textAlign:'left', content:'attr(placeholder)',
@@ -948,7 +949,11 @@ export default class TaleBrush_Canvas extends React.Component {
                     fontFamily: 'Spoqa Han Sans Neo', fontSize: '15.6px', fontWeight: '400', 
                     color: 'rgba(10, 10, 10, 0.80)',
                     marginLeft:'6px', marginTop:'5px'
-                    }}> 's fortune
+                    }}> {this.props.mother_state.characters[0]['name']=='' ? 'fortune' : "'s fortune"}
+                    <DemoMarker n={1} title='Name the protagonist' style={{marginLeft: '10px', marginTop: '-3px'}}
+                        points={[<span>One character drives the story</span>, <span>Leave it blank and the story is about <b>you</b></span>, <span>Fortune has 5 levels: catastrophe · bad · neutral · good · triumph</span>]}
+                        example={<span>Type <b>Sophie</b>, or leave it blank: “You open the bakery door at dawn.”</span>}
+                        note={<span>A blank name now means a second-person story about you</span>} />
                 </div>  
             </div>     
 
@@ -962,10 +967,23 @@ export default class TaleBrush_Canvas extends React.Component {
                         <img id='generate_button' src={generate_default} onPointerDown={this.props.mother_this.generate.bind(this, this)}  style={{height: '35px', visibility:'visible'}}/>
                     </div>
             </div>
+            {/* Always visible, just right of where the Generate Again button appears after a stroke. */}
+            <DemoMarker n={5} title='Generate Again' style={{position: 'fixed', top: '143px', right: 'calc(5.2% - 28px)'}}
+                points={[<span>Appears here after you draw</span>, <span>Same curve, new sentences</span>, <span>Every try is kept in History</span>]}
+                example={<span>The dip came out too mild? Try again</span>} />
 
             <div style={{
                 flex: 'auto', position: 'relative', 
                 marginTop: '20px'}}>
+
+                <DemoMarker n={3} title='Sketch the fortune' style={{position: 'absolute', top: '14px', left: 'calc(10% - 30px)', zIndex: 2}}
+                    points={[<span>Draw left to right: higher = better fortune</span>, <span>One sentence per line you cross</span>, <span>Your own sentences are kept</span>]}
+                    example={<span>High, then a crisis, then a comeback</span>}
+                    note={<span>Claude replaces GPT-Neo + GeDi, whose trained models are gone</span>} />
+                <DemoMarker n={4} title='Intent vs. outcome' style={{position: 'absolute', top: '14px', left: 'calc(90% + 12px)', zIndex: 2}}
+                    points={[<span><b style={{color: '#0F924E'}}>Green</b>: the fortune you drew</span>, <span><b style={{color: '#54A0F8'}}>Blue</b> / <b style={{color: '#999795'}}>grey</b> line: what each sentence scored</span>, <span>Five bands, top to bottom: triumph, good, neutral, bad, catastrophe</span>, <span>Flat line: neutral (50)</span>]}
+                    example={<span>A gap means the story didn't follow your sketch</span>}
+                    note={<span>Scores come from Claude Haiku, replacing the paper's trained classifier</span>} />
 
                 <div style={{position: 'absolute', top: '10px', marginLeft:'10%', width:'80%', height: 'calc(100% - 180px)', overflow: 'hidden', opacity:(this.props.mother_state.being_generated)?'0.5':'1'}}>
                     {/* <div style={{position: 'absolute', width:'100%', height:'100%'}}> 
@@ -997,13 +1015,14 @@ export default class TaleBrush_Canvas extends React.Component {
                 <div style={{position:'absolute', display:'inline-block', marginLeft:'-4px', width:'128px', height:'60px', backgroundColor:'gray', borderRadius:'10px', zIndex:'-1'}}/>
                 <div style={{display:'inline-block'}}>
                     {this.props.mother_state.x_axis==-1 && <div style={{marginRight: '10px'}}>
-                        <div className='btn' style={{backgroundColor:'transparent', width:'60px', boxShadow:'none', height:'60px'}}
+                        {/* Enhancement E3: tooltips, since the two icons aren't labeled. */}
+                        <div className='btn' title="Brush: draw the protagonist's fortune. Higher is better fortune." style={{backgroundColor:'transparent', width:'60px', boxShadow:'none', height:'60px'}}
                         onPointerDown={this.toggleBrushState.bind(this, 'brush')}>
                             <img src={(this.props.mother_state.action_state=='erase')?pen_on:pen_off} style={{
                                 display:'inline', width:'52px', marginLeft:'-13px', marginTop:'4px'
                             }}/>
                         </div>
-                        <div className='btn' style={{backgroundColor:'transparent', width:'60px', boxShadow:'none', height:'60px'}}
+                        <div className='btn' title='Eraser: drag across lines to remove their fortune curve and rewrite them with no fortune target.' style={{backgroundColor:'transparent', width:'60px', boxShadow:'none', height:'60px'}}
                         onPointerDown={this.toggleBrushState.bind(this, 'erase')}>
                             <img src={(this.props.mother_state.action_state=='erase')?erase_on:erase_off} style={{
                                 display:'inline', width:'52px', marginLeft:'-13px', marginTop:'4px'
@@ -1011,6 +1030,10 @@ export default class TaleBrush_Canvas extends React.Component {
                         </div>
                     </div>}                
                 </div>
+                <DemoMarker n={9} title='Brush and eraser' style={{position: 'absolute', top: '20px', left: 'calc(50% + 72px)'}}
+                    points={[<span>Brush: draw the fortune curve</span>, <span>Eraser: clear it and rewrite with no target</span>]}
+                    example={<span>Erase lines 5 and 6 to let the story decide</span>}
+                    note={<span>The hover tooltips are new</span>} />
             </div>
 
             

@@ -21,6 +21,7 @@ A record of what it took to get the 2022 TaleBrush project running again on pres
 | 2026-10-28 | — | Tooltips on the brush and eraser, and a placeholder in the empty writing area (E3–E4) |
 | 2026-10-28 | — | Surprise control across its full range, and numbered explanation markers for demos (E5–E6) |
 | 2026-10-28 | — | A blank protagonist name makes "you" the protagonist (E7) |
+| 2026-11-01 | — | Interface text names TaleBrush instead of Claude (E8) |
 
 ## The problem: a 2021 software stack on a 2026 runtime
 
@@ -348,8 +349,8 @@ The same scorer rates surprise and helps choose the sentence, so the check shows
 |---|---|---|---|
 | 1 | Protagonist name | One character; fortune runs 0–100 | Blank-name fallback (change 24) |
 | 2 | Writing area | One sentence per `>` line | Empty stories and the placeholder (E2, E4) |
-| 3 | Chart, left | Line positions, drawing, slow strokes | Claude instead of GPT-Neo + GeDi; strokes over written lines (change 11, E1) |
-| 4 | Chart, right | Green band, blue and grey lines, neutral line | Claude Haiku as the fortune scorer (change 11) |
+| 3 | Chart, left | Line positions, drawing, slow strokes | A new language model instead of GPT-Neo + GeDi; strokes over written lines (change 11, E1) |
+| 4 | Chart, right | Green band, blue and grey lines, neutral line | A new language model as the fortune scorer (change 11) |
 | 5 | Where Generate Again appears | Rerunning the last stroke | — |
 | 6 | Writing area, lower | Editing re-scores; filling gaps | Infill continuity fix (change 21) |
 | 7 | Surprise checkbox | Drawing surprise, with real low and high examples | The rebuilt surprise control (E5) |
@@ -373,6 +374,12 @@ The "Generate Again" button only appears after a stroke, so marker 5 has its own
 `make test` now also generates with a blank name and checks that the sentence is about "you": "You step onto the platform just as the last train pulls away, and your ticket, you realize too late, was for yesterday." In headless Chrome, a stroke over an empty story with no name wrote three second-person sentences.
 
 **The fortune scale already had five levels.** The scorer's rubric anchors 0 (catastrophe), 25 (bad), 50 (neutral), 75 (good) and 100 (triumph). The writing prompt uses five matching bands, and the chart's background is drawn as five bands. Only popup 1 had shown just the two ends. Popups 1 and 4 now list all five.
+
+### E8. The interface names TaleBrush, not Claude
+
+**Why:** Three marker cards and one README step said "Claude" did things: popup 2 said "Claude writes the opening", popup 3 said "Claude replaces GPT-Neo + GeDi", and popup 4 said scores came from "Claude Haiku". To a demo audience the tool is TaleBrush, and naming the model behind it in the interface pulls attention from the interaction to the vendor.
+
+**Fix:** Popup 2 and the README's "To write a story" step now say "TaleBrush writes the opening". Popups 3 and 4 couldn't just swap the name ("TaleBrush replaces GPT-Neo" would be wrong), so they now say TaleBrush uses, or scores with, "a new language model". The E6 table above was updated to match. Developer-facing mentions were left as they are: the README's API key setup, `.env.example`, the model IDs, and `server_llm.py`, since anyone running the tool needs to know it calls the Claude API.
 
 ## How to run it now
 

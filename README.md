@@ -39,7 +39,7 @@ You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) (runn
 To write a story:
 
 1. Optionally, type the protagonist's name above the chart, e.g. Mara. Leave it blank and the story is about *you*, told in the second person.
-2. Optionally, write the first sentence yourself on the first line of the text box. If you leave the story empty, Claude writes the opening.
+2. Optionally, write the first sentence yourself on the first line of the text box. If you leave the story empty, TaleBrush writes the opening.
 3. Draw the fortune curve: high is good fortune, low is bad. In the chart, each line of text sits on a vertical gridline: the left edge is line 1, the first gridline is line 2, and so on. If your stroke starts over sentences you've written, they're kept and the story continues after them.
 4. To fill a gap between written sentences, draw over just the empty lines in between. Editing a sentence by hand re-scores it.
 

@@ -979,11 +979,11 @@ export default class TaleBrush_Canvas extends React.Component {
                 <DemoMarker n={3} title='Sketch the fortune' style={{position: 'absolute', top: '14px', left: 'calc(10% - 30px)', zIndex: 2}}
                     points={[<span>Draw left to right: higher = better fortune</span>, <span>One sentence per line you cross</span>, <span>Your own sentences are kept</span>]}
                     example={<span>High, then a crisis, then a comeback</span>}
-                    note={<span>Claude replaces GPT-Neo + GeDi, whose trained models are gone</span>} />
+                    note={<span>TaleBrush now uses a new language model; GPT-Neo + GeDi's trained models are gone</span>} />
                 <DemoMarker n={4} title='Intent vs. outcome' style={{position: 'absolute', top: '14px', left: 'calc(90% + 12px)', zIndex: 2}}
                     points={[<span><b style={{color: '#0F924E'}}>Green</b>: the fortune you drew</span>, <span><b style={{color: '#54A0F8'}}>Blue</b> / <b style={{color: '#999795'}}>grey</b> line: what each sentence scored</span>, <span>Five bands, top to bottom: triumph, good, neutral, bad, catastrophe</span>, <span>Flat line: neutral (50)</span>]}
                     example={<span>A gap means the story didn't follow your sketch</span>}
-                    note={<span>Scores come from Claude Haiku, replacing the paper's trained classifier</span>} />
+                    note={<span>TaleBrush now scores with a new language model, replacing the paper's trained classifier</span>} />
 
                 <div style={{position: 'absolute', top: '10px', marginLeft:'10%', width:'80%', height: 'calc(100% - 180px)', overflow: 'hidden', opacity:(this.props.mother_state.being_generated)?'0.5':'1'}}>
                     {/* <div style={{position: 'absolute', width:'100%', height:'100%'}}> 

@@ -1232,7 +1232,7 @@ export default class TaleBrush_TextBox_Text extends React.Component {
               <DemoMarker n={2} title="Write an opening, or don't" style={{position: 'absolute', top: '7px', left: '-52px'}}
                   points={[<span>One sentence per <b>&gt;</b> line</span>, <span>Each line is one gridline on the chart</span>]}
                   example={<span><i>Today Sophie starts law school.</i></span>}
-                  note={<span>Empty stories now work: Claude writes the opening</span>} />
+                  note={<span>Empty stories now work: TaleBrush writes the opening</span>} />
               <DemoMarker n={6} title='Edit and fill gaps' style={{position: 'absolute', top: '103px', left: '-52px'}}
                   points={[<span>Edit a sentence: it gets re-scored</span>, <span>Draw over empty lines between sentences to fill them</span>]}
                   example={<span>Keep lines 1 and 5, draw over 2 to 4</span>}

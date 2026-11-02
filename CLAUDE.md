@@ -4,7 +4,7 @@ This is a fork of [naver-ai/TaleBrush](https://github.com/naver-ai/TaleBrush) (C
 
 ## Log every change in REVIVAL_LOG.md
 
-Every change to this repo must be recorded in [REVIVAL_LOG.md](REVIVAL_LOG.md), in the same session as the change. The log is the source material for the presentation, so it should explain the work to an audience, not just list diffs.
+Every change to this repo must be recorded in [notes/REVIVAL_LOG.md](notes/REVIVAL_LOG.md), in the same session as the change. The log is the source material for the presentation, so it should explain the work to an audience, not just list diffs.
 
 - Restoration of the original tool is complete as of commit `35652a3`. Add new work under **Enhancements** as `### E1.`, `### E2.`, …; use **Changes** (numbered 1, 2, …) only for fixes that restore original behavior.
 - Give each entry a `###` heading, with a **Why:** paragraph (what was broken or missing, and the root cause) and a **Fix:** paragraph (what changed, and why that approach was chosen over the alternatives).
@@ -16,4 +16,4 @@ Every change to this repo must be recorded in [REVIVAL_LOG.md](REVIVAL_LOG.md), 
 ## Working conventions
 
 - The user makes all commits. Don't commit or push.
-- [WORKPLAN_LLM_BACKEND.md](WORKPLAN_LLM_BACKEND.md) tracks the planned LLM backend. Mark items `[x]` as they're completed.
+- [notes/WORKPLAN_LLM_BACKEND.md](notes/WORKPLAN_LLM_BACKEND.md) tracks the planned LLM backend. Mark items `[x]` as they're completed.

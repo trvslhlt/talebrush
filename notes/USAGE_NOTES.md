@@ -1,7 +1,3 @@
-General Notes
-1. Manually changing a line causes it to be rescored and the score is updated in the narrative line. But, the changes don't cascade so the story may then be inconsistent.
-2. Odd History version naming (e.g. 0-0-0)
-
 Issues
 1. Manually changing text can leave the story in an inconsistent state
 2. Manually adding new lines breaks the UI

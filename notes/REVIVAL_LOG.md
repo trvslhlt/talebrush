@@ -22,6 +22,7 @@ A record of what it took to get the 2022 TaleBrush project running again on pres
 | 2026-10-28 | — | Surprise control across its full range, and numbered explanation markers for demos (E5–E6) |
 | 2026-10-28 | — | A blank protagonist name makes "you" the protagonist (E7) |
 | 2026-11-01 | — | Interface text names TaleBrush instead of Claude (E8) |
+| 2026-11-02 | — | Removed the patched Colab notebook and fixed links to the files moved into `notes/` (E9) |
 
 ## The problem: a 2021 software stack on a 2026 runtime
 
@@ -34,7 +35,7 @@ The tunnel setup further down would also have failed, because it relied on an ng
 
 ## Changes
 
-Changes 1–6 are in `TaleBrush_Server_Code_(public).ipynb`. Changes 7–10 are in `TaleBrush_Interface/` and changes 11–14 are in `TaleBrush_Backend/`, as part of replacing the backend with a modern LLM (see [WORKPLAN_LLM_BACKEND.md](WORKPLAN_LLM_BACKEND.md)). The front-end React code is unchanged by the restoration. Everything under **Changes** restores the original tool; work that goes beyond it is under **Enhancements**.
+Changes 1–6 were in `TaleBrush_Server_Code_(public).ipynb`, which was later removed (see E9); its last version is in commit `028772d`. Changes 7–10 are in `TaleBrush_Interface/` and changes 11–14 are in `TaleBrush_Backend/`, as part of replacing the backend with a modern LLM (see [WORKPLAN_LLM_BACKEND.md](WORKPLAN_LLM_BACKEND.md)). The front-end React code is unchanged by the restoration. Everything under **Changes** restores the original tool; work that goes beyond it is under **Enhancements**.
 
 ### 1. Install `transformers` 4.8.2 without the `tokenizers` package
 
@@ -124,7 +125,7 @@ The original server's selection loop is kept: generate, score, and accept a sent
 
 **How this differs from the paper:** TaleBrush's research contribution was steering at the token level: GeDi adjusted the probability of every next word toward the target fortune. The new backend steers with instructions ("Anna's fortune should be about 20/100: things go badly") and then re-ranks finished sentences by score. The interface and the interaction are the original; the method under them is not.
 
-The old server, `server_code.py`, and the Colab notebook are untouched, so the original pipeline still works if the model files are recovered.
+The old server, `server_code.py`, is untouched, so the original code is still there if the model files are recovered. The Colab notebook was also left in place at this point, and was removed later (see E9).
 
 ### 12. Choose one model for writing and another for scoring
 
@@ -262,7 +263,7 @@ Most of the remaining time is the two model calls each sentence needs one after 
 
 **Why:** The README's instructions still described the upstream path: open `naver-ai`'s Colab notebook (with a broken link), paste an ngrok URL into `app.py` by hand, and run `npm run production`. The models that path needs are gone, and the interface build needs Node 16 or older.
 
-**Fix:** The top of the README now explains that this is a revival and links to this log. "Running TaleBrush" covers Docker Desktop, `cp .env.example .env`, adding the key and `make up`, with a table of the other `make` targets. The original Colab instructions are kept in a separate section, "The original pipeline (no longer runs)". It points to this fork's patched notebook and starts the interface in Docker with `ML_URL`, the same steps as "How to run it now" below. The inherited GeDi README further down is unchanged.
+**Fix:** The top of the README now explains that this is a revival and links to this log. "Running TaleBrush" covers Docker Desktop, `cp .env.example .env`, adding the key and `make up`, with a table of the other `make` targets. The original Colab instructions are kept in a separate section, "The original pipeline (no longer runs)". It points to this fork's patched notebook and starts the interface in Docker with `ML_URL`. E9 later removed the notebook and these steps. The inherited GeDi README further down is unchanged.
 
 ### 23. Check a fresh copy from scratch (no code change)
 
@@ -381,6 +382,14 @@ The "Generate Again" button only appears after a stroke, so marker 5 has its own
 
 **Fix:** Popup 2 and the README's "To write a story" step now say "TaleBrush writes the opening". Popups 3 and 4 couldn't just swap the name ("TaleBrush replaces GPT-Neo" would be wrong), so they now say TaleBrush uses, or scores with, "a new language model". The E6 table above was updated to match. Developer-facing mentions were left as they are: the README's API key setup, `.env.example`, the model IDs, and `server_llm.py`, since anyone running the tool needs to know it calls the Claude API.
 
+### E9. Remove the patched Colab notebook
+
+**Why:** `TaleBrush_Server_Code_(public).ipynb` was the last entry point to the original pipeline, and it can't get past its model downloads because the Google Drive files are gone (see **Known open items**). Nothing that runs uses it: `make up`, Docker and `server_llm.py` never touch it. Keeping it at the top of the repo, with run instructions in the README, suggested a working path that doesn't exist.
+
+**Fix:** The notebook is deleted, and the README's "The original pipeline (no longer runs)" section now explains what happened instead of listing steps that can't finish. Deleting it was chosen over keeping it as an archive because git already does that job: the last version is in commit `028772d`, and changes 1–6 above still describe its patches. To read it, run `git show '028772d:TaleBrush_Server_Code_(public).ipynb'`. The original code stays in `TaleBrush_Backend/` for reference, but `server_code.ipynb` there is the unpatched upstream copy, so anyone reviving this path needs those patches back from history.
+
+The same pass fixed links left stale when `REVIVAL_LOG.md` and `WORKPLAN_LLM_BACKEND.md` moved into `notes/`, in the README and `CLAUDE.md`.
+
 ## How to run it now
 
 **With the Claude backend (recommended):**
@@ -397,24 +406,10 @@ The "Generate Again" button only appears after a stroke, so marker 5 has its own
 
 `make down` stops it, and `make` lists the other commands. Before a demo, `make sketch-check` replays a full sketch and shows how long the audience will wait.
 
-**With the original GPT-Neo + GeDi pipeline:** this path stops at the notebook's download cells until the model files are recovered (see below).
-
-1. Open the notebook in Colab: `https://colab.research.google.com/github/trvslhlt/talebrush/blob/main/TaleBrush_Server_Code_(public).ipynb`
-2. Pick a GPU runtime with high RAM. GPT-Neo 2.7B and the GeDi model are loaded together.
-3. Add the `NGROK_AUTHTOKEN` secret, then run all cells.
-4. Build and start only the interface, pointing it at the tunnel URL printed by the last cell:
-
-   ```
-   cd TaleBrush_Interface
-   docker build -t talebrush-interface .
-   docker run -p 7082:7082 -v talebrush-data:/data -e ML_URL=https://<printed-hostname>/ talebrush-interface
-   ```
-
-5. Open `http://localhost:7082/talebrush`.
+**With the original GPT-Neo + GeDi pipeline:** this no longer runs, because the model files are gone (see below) and the patched notebook has been removed (E9).
 
 ## Known open items
 
-- **Blocker: the trained model files are no longer available.** The notebook downloads five Google Drive files: the fortune GeDi model, three prompt embeddings (continuation, infilling from the front, infilling from the back) and the fortune recognizer. As of 2026-10-26, all five return "Page Not Found". A known-public Drive file loads fine, so the check itself works. We found no mirror on Hugging Face, and no issues are filed on the upstream repo. Retraining isn't practical, because the repo includes only SST sentiment data, not the fortune-annotated story data the models were trained on. The way forward is to ask the original authors for the files.
-- **Cells after the downloads are untested on current Colab.** These cells load GPT-Neo and GeDi. They may still hit problems with today's PyTorch or NumPy. Separately, `gdown` warns that the `--id` flag is deprecated. That's harmless, but the flag can be dropped.
+- **Blocker: the trained model files are no longer available.** The original pipeline downloads five Google Drive files: the fortune GeDi model, three prompt embeddings (continuation, infilling from the front, infilling from the back) and the fortune recognizer. As of 2026-10-26, all five return "Page Not Found". A known-public Drive file loads fine, so the check itself works. We found no mirror on Hugging Face, and no issues are filed on the upstream repo. Retraining isn't practical, because the repo includes only SST sentiment data, not the fortune-annotated story data the models were trained on. The way forward is to ask the original authors for the files.
 - **The icons depend on the original authors' Font Awesome kit** (change 23). It works today; if it stops, the page still works, but without icons.
-- `TaleBrush_Backend/server_code.ipynb`, the upstream copy, has not been patched. Only the public notebook has.
+- `TaleBrush_Backend/server_code.ipynb`, the upstream copy, has not been patched, and it's now the only server notebook in the repo. The Colab fixes are in commit `028772d` (E9). The cells after the model downloads were never tested on current Colab, so they may still hit problems with today's PyTorch or NumPy.

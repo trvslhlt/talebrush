@@ -92,7 +92,7 @@ It must match the existing API exactly:
 ## Phase 5: document
 
 - [x] Add a section to `REVIVAL_LOG.md` covering why the backend was replaced (the model files are gone), how it differs from the paper, and the move to Docker. The paper steered generation token by token with GeDi; this uses instructions and re-ranking.
-- [x] Rewrite the README run instructions: install Docker Desktop, `cp .env.example .env`, add the key, `make up`. Keep the original Colab instructions as a separate "original pipeline" section.
+- [x] Rewrite the README run instructions: install Docker Desktop, `cp .env.example .env`, add the key, `make up`. Keep the original Colab instructions as a separate "original pipeline" section. *(The notebook and its steps were removed later; see E9 in the log.)*
 
 ## Risks
 

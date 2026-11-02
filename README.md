@@ -14,7 +14,7 @@ TaleBrush uses a line sketching interaction for intuitive control and sensemakin
 TaleBrush allows uses to control the protagonist's fortune. 
 
 
-This fork revives TaleBrush to run on current tooling. The original models are no longer downloadable, so the model server now uses Claude for generation and fortune scoring, and the whole tool runs locally in Docker. [REVIVAL_LOG.md](REVIVAL_LOG.md) explains every change and how this backend differs from the paper's.
+This fork revives TaleBrush to run on current tooling. The original models are no longer downloadable, so the model server now uses Claude for generation and fortune scoring, and the whole tool runs locally in Docker. [REVIVAL_LOG.md](notes/REVIVAL_LOG.md) explains every change and how this backend differs from the paper's.
 
 ## Running TaleBrush
 
@@ -62,18 +62,7 @@ The settings in `.env` choose the models and trade quality for speed; `.env.exam
 
 ## The original pipeline (no longer runs)
 
-The original backend ran GPT-Neo 2.7B with GeDi on a Colab GPU, exposed through ngrok. Its fine-tuned model files were hosted on Google Drive and have since been removed, so this path stops at the model download. The code is kept in [TaleBrush_Backend](TaleBrush_Backend) for reference, and the original instructions were:
-
-1. Run [TaleBrush_Server_Code_(public).ipynb](TaleBrush_Server_Code_(public).ipynb) in Colab with a high-RAM GPU runtime, with your ngrok authtoken stored as the Colab secret `NGROK_AUTHTOKEN`.
-2. Build and start only the interface, pointing it at the ngrok URL printed by the last cell:
-
-   ```
-   cd TaleBrush_Interface
-   docker build -t talebrush-interface .
-   docker run -p 7082:7082 -v talebrush-data:/data -e ML_URL=https://<printed-hostname>/ talebrush-interface
-   ```
-
-3. Open http://localhost:7082/talebrush.
+The original backend ran GPT-Neo 2.7B with GeDi on a Colab GPU, exposed through ngrok. Its fine-tuned model files were hosted on Google Drive and have since been removed, so this path stops at the model download. The code is kept in [TaleBrush_Backend](TaleBrush_Backend) for reference, including the upstream notebook, [server_code.ipynb](TaleBrush_Backend/server_code.ipynb). This fork's patched Colab notebook has been removed. Its last version is in commit `028772d`, and [the revival log](notes/REVIVAL_LOG.md) describes the patches.
 
 <!-- We use GeDi with the secondary code as the level of the protagonist's fortune (0~100).
 
